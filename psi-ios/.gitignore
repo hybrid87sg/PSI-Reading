@@ -1,0 +1,6 @@
+PSI.xcodeproj/
+build/
+screenshots/
+App/Info.plist
+Widget/Info.plist
+xcuserdata/

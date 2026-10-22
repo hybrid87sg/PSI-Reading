@@ -1,0 +1,43 @@
+name: Build PSI iPhone app
+
+on:
+  push:
+    paths:
+      - 'psi-ios/**'
+      - '.github/workflows/ios-app.yml'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-15
+    permissions:
+      contents: write
+    defaults:
+      run:
+        shell: bash
+        working-directory: psi-ios
+    steps:
+      - uses: actions/checkout@v4
+      - name: Generate Xcode project
+        run: |
+          brew install xcodegen
+          xcodegen generate
+      - name: Build for the iOS simulator
+        run: |
+          set -o pipefail
+          xcodebuild -project PSI.xcodeproj -scheme PSI -configuration Debug \
+            -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath build build | tail -n 80
+      - name: Take iPhone and iPad screenshots
+        run: ci/screenshots.sh build/Build/Products/Debug-iphonesimulator/PSI.app screenshots
+      # Screenshots go to a preview release for review; the app itself can't be installed
+      # on an iPhone without Apple signing (see psi-ios/README.md).
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: psi-ios-preview
+          name: PSI iPhone app (preview)
+          target_commitish: ${{ github.sha }}
+          prerelease: true
+          make_latest: false
+          body: Simulator screenshots of the PSI Home & Office iPhone app.
+          files: psi-ios/screenshots/*.png
