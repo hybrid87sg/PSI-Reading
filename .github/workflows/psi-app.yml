@@ -41,3 +41,34 @@ jobs:
           body: Latest build of the PSI Home & Office Android app. Download psi-app.apk below and open it on your phone.
           files: psi-app/psi-app.apk
           make_latest: true
+
+  screenshot:
+    # Runs the app on an emulator and attaches a screenshot to the same release.
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: psi-app-apk
+      - name: Enable KVM for the emulator
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Take screenshot
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          target: google_apis
+          arch: x86_64
+          script: |
+            adb install -r app-debug.apk
+            adb shell am start -n sg.psi.app/.MainActivity
+            sleep 20
+            adb exec-out screencap -p > psi-app-screenshot.png
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: psi-app-latest
+          files: psi-app-screenshot.png

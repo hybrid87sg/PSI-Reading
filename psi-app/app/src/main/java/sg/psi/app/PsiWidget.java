@@ -42,14 +42,21 @@ public class PsiWidget extends AppWidgetProvider {
         PsiClient.Result result = PsiClient.load(prefs);
         RemoteViews views = new RemoteViews(context.getPackageName(), R.layout.widget_psi);
 
-        bind(views, result, "Home", prefs.getString(PsiClient.PREF_HOME, PsiClient.DEFAULT_HOME),
+        Integer home = bind(views, result, "🏠 Home",
+                prefs.getString(PsiClient.PREF_HOME, PsiClient.DEFAULT_HOME),
                 R.id.home_label, R.id.home_value, R.id.home_band);
-        bind(views, result, "Office", prefs.getString(PsiClient.PREF_OFFICE, PsiClient.DEFAULT_OFFICE),
+        Integer office = bind(views, result, "🏢 Office",
+                prefs.getString(PsiClient.PREF_OFFICE, PsiClient.DEFAULT_OFFICE),
                 R.id.office_label, R.id.office_value, R.id.office_band);
 
-        String ts = result == null ? "" : result.timestamp;
+        // Like the app, the widget takes on the colour of the worse reading.
+        Integer worst = home;
+        if (worst == null || (office != null && office > worst)) worst = office;
+        views.setInt(R.id.widget_root, "setBackgroundResource", PsiClient.widgetBackground(worst));
+
+        String time = PsiClient.shortTime(result == null ? null : result.timestamp);
         views.setTextViewText(R.id.widget_updated,
-                ts.length() >= 16 ? "24-hr PSI · " + ts.substring(11, 16) : "24-hr PSI");
+                time.isEmpty() ? "24-hr PSI" : "24-hr PSI · " + time);
 
         Intent open = new Intent(context, MainActivity.class);
         PendingIntent tap = PendingIntent.getActivity(context, 0, open,
@@ -59,19 +66,13 @@ public class PsiWidget extends AppWidgetProvider {
         manager.updateAppWidget(ids, views);
     }
 
-    private static void bind(RemoteViews views, PsiClient.Result result, String name, String region,
-                             int labelId, int valueId, int bandId) {
+    private static Integer bind(RemoteViews views, PsiClient.Result result, String name, String region,
+                                int labelId, int valueId, int bandId) {
         views.setTextViewText(labelId, name + " · " + PsiClient.label(region));
         Integer psi = result == null ? null : result.readings.get(region);
-        if (psi == null) {
-            views.setTextViewText(valueId, "–");
-            views.setTextColor(valueId, 0xFF111111);
-            views.setTextViewText(bandId, "");
-            return;
-        }
-        views.setTextViewText(valueId, String.valueOf(psi));
-        views.setTextColor(valueId, PsiClient.bandColor(psi));
-        views.setTextViewText(bandId, PsiClient.bandName(psi));
+        views.setTextViewText(valueId, psi == null ? "–" : String.valueOf(psi));
+        views.setTextViewText(bandId, psi == null ? "" : PsiClient.bandName(psi));
+        return psi;
     }
 
     private static SharedPreferences prefs(Context context) {
