@@ -65,6 +65,7 @@ jobs:
     permissions:
       contents: write
     steps:
+      - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
         with:
           name: psi-app-apk
@@ -93,6 +94,12 @@ jobs:
             adb shell input draganddrop 540 725 540 1450 1500
             sleep 3
             adb exec-out screencap -p > psi-app-reordered.png
+            psi-app/ci/seed.sh psi-app/ci/prefs-4-locations.xml
+            sleep 15
+            adb exec-out screencap -p > psi-app-4-locations.png
+            psi-app/ci/seed.sh psi-app/ci/prefs-8-locations.xml
+            sleep 15
+            adb exec-out screencap -p > psi-app-8-locations.png
             adb shell wm size 2208x1840
             sleep 12
             adb exec-out screencap -p > psi-app-foldable.png
@@ -103,4 +110,6 @@ jobs:
             psi-app-setup.png
             psi-app-screenshot.png
             psi-app-reordered.png
+            psi-app-4-locations.png
+            psi-app-8-locations.png
             psi-app-foldable.png
