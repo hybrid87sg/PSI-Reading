@@ -89,11 +89,44 @@ final class PsiClient {
     }
 
     static int bandColor(int psi) {
-        if (psi <= 50) return Color.parseColor("#2E9E4F");
-        if (psi <= 100) return Color.parseColor("#2F7BD8");
-        if (psi <= 200) return Color.parseColor("#E8A317");
-        if (psi <= 300) return Color.parseColor("#D9481E");
-        return Color.parseColor("#8B1A1A");
+        if (psi <= 50) return Color.parseColor("#1FA463");
+        if (psi <= 100) return Color.parseColor("#2F80ED");
+        if (psi <= 200) return Color.parseColor("#F2994A");
+        if (psi <= 300) return Color.parseColor("#EB5757");
+        return Color.parseColor("#8E2042");
+    }
+
+    /** Top and bottom colours of the screen background; null means no reading yet. */
+    static int[] bandGradient(Integer psi) {
+        if (psi == null) return new int[]{0xFF3A4A7A, 0xFF182848};
+        if (psi <= 50) return new int[]{0xFF0F9B8E, 0xFF3CC97A};
+        if (psi <= 100) return new int[]{0xFF2F6FE0, 0xFF56B4F2};
+        if (psi <= 200) return new int[]{0xFFE0702A, 0xFFF2C14C};
+        if (psi <= 300) return new int[]{0xFFC9233A, 0xFFF06A3C};
+        return new int[]{0xFF4A0E1E, 0xFF8E2042};
+    }
+
+    static int widgetBackground(Integer psi) {
+        if (psi == null) return R.drawable.widget_bg_none;
+        if (psi <= 50) return R.drawable.widget_bg_good;
+        if (psi <= 100) return R.drawable.widget_bg_moderate;
+        if (psi <= 200) return R.drawable.widget_bg_unhealthy;
+        if (psi <= 300) return R.drawable.widget_bg_very_unhealthy;
+        return R.drawable.widget_bg_hazardous;
+    }
+
+    /** Short health tip for the general public, following NEA's advisory bands. */
+    static String bandAdvice(int psi) {
+        if (psi <= 50) return "Great day to be outdoors.";
+        if (psi <= 100) return "Air is fine for normal activities.";
+        if (psi <= 200) return "Cut down on long or strenuous outdoor activity.";
+        if (psi <= 300) return "Avoid long or strenuous outdoor activity.";
+        return "Stay indoors and keep outdoor activity to a minimum.";
+    }
+
+    /** "2026-10-22 11:00:00" → "11:00". */
+    static String shortTime(String timestamp) {
+        return timestamp != null && timestamp.length() >= 16 ? timestamp.substring(11, 16) : "";
     }
 
     static String bandName(int psi) {
