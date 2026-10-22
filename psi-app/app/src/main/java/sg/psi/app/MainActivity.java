@@ -48,7 +48,9 @@ public class MainActivity extends Activity {
     private static final int WIDE_DP = 600;
     /** Content never gets wider than this, so cards don't stretch on very large screens. */
     private static final int MAX_CONTENT_DP = 840;
-    private static final int MAX_LOCATIONS = 8;
+    private static final int MAX_LOCATIONS = 12;
+    /** Mini cards are only used for more locations than this. */
+    private static final int MINI_ABOVE = 8;
 
     /**
      * Card sizes, largest first. The screen uses the largest size whose content fits without
@@ -256,8 +258,12 @@ public class MainActivity extends Activity {
         int width = root.getWidth() - root.getPaddingLeft() - root.getPaddingRight();
         if (available <= 0 || width <= 0) return;
 
-        Level chosen = Level.MINI;
+        // Up to MINI_ABOVE locations keep full-height cards (scrolling if needed); beyond that,
+        // mini cards are allowed too.
+        boolean allowMini = locations.size() > MINI_ABOVE;
+        Level chosen = allowMini ? Level.MINI : Level.TINY;
         for (Level candidate : Level.values()) {
+            if (candidate.mini && !allowMini) continue;
             applyLevel(candidate);
             content.measure(View.MeasureSpec.makeMeasureSpec(width, View.MeasureSpec.EXACTLY),
                     View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED));
@@ -663,7 +669,6 @@ public class MainActivity extends Activity {
             body = view.findViewById(R.id.body);
             info = view.findViewById(R.id.info);
             header = view.findViewById(R.id.header);
-            title.setMaxLines(1);
             title.setEllipsize(TextUtils.TruncateAt.END);
             regionChip.setOnClickListener(v -> pickRegion(location, null));
             view.setOnClickListener(v -> editLocation(location));
@@ -728,6 +733,8 @@ public class MainActivity extends Activity {
             header.setVisibility(level.mini ? View.GONE : View.VISIBLE);
             band.setTextSize(level.mini ? 12 : 14);
             regionChip.setVisibility(level.compact ? View.GONE : View.VISIBLE);
+            // Names may wrap to a second line rather than being cut off.
+            title.setMaxLines(2);
             emoji.setTextSize(compact ? 18 : 22);
             title.setTextSize(compact ? 16 : 19);
             updateTexts();
