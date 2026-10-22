@@ -1,6 +1,6 @@
 # PSI Home & Office for iPhone and iPad
 
-An iPhone and iPad app that shows Singapore's **24-hour PSI** for the two places you care about most: your **home** and your **office**. It also has a home-screen widget, so you can check the air without opening anything.
+An iPhone and iPad app that shows Singapore's **24-hour PSI** for the places you care about: your **home**, your **office**, and up to six more of your own, like the gym or your parents' place. It also has a home-screen widget, so you can check the air without opening anything.
 
 <img src="https://github.com/hybrid87sg/PSI-Reading/releases/download/psi-ios-preview/psi-ios-iphone.png" alt="PSI Home & Office on an iPhone, showing Home and Office gauges" width="300">
 
@@ -14,8 +14,10 @@ During haze season, you usually want to know two things: is the air OK where I l
 
 This app answers those two questions at a glance:
 
-- **Two cards, Home and Office**, each with a ring gauge showing the current 24-hr PSI for that part of Singapore, and a one-line health tip, on a dark turquoise card.
-- **The whole screen changes colour** with the air: fresh green on a good day, blue when it's moderate, and warming to orange, red and maroon as the haze gets worse. The colour follows whichever of your two places is worse.
+- **A card for each place**, starting with Home and Office. Each has a ring gauge showing the current 24-hr PSI for that part of Singapore, and a one-line health tip, on a dark turquoise card.
+- **Your own places:** add up to 8 locations, each with its own name and icon.
+- **Everything fits on one screen:** the cards resize to fit how many places you have.
+- **The whole screen changes colour** with the air: fresh green on a good day, blue when it's moderate, and warming to orange, red and maroon as the haze gets worse. The colour follows whichever of your places is worst.
 - **A home-screen widget** with both readings, in the same colours.
 
 It's deliberately small. There are no accounts, no ads and no tracking. The app only goes online to fetch the PSI data.
@@ -46,22 +48,28 @@ For what each band means for outdoor activity, see NEA's health advisory on [haz
 2. The app fetches the latest readings, and the gauges fill up to the current values.
 3. That's it. The app remembers your choices.
 
-**Changing your regions:** tap the location button (the arrow icon) at the top, then **Home** or **Office**. You can also tap the region on a card, for example **East ⌄**.
+**Adding a place:** tap the **＋** button at the top, then **Add a location**. Give it a name (for example "Gym" or "Mum's place"), pick an icon, choose its region, and tap **Add**. You can have up to 8 places.
+
+**Editing or deleting a place:** tap its card, or tap **＋** and pick it from the list. You can change the name, icon and region, or tap **Delete location**. You always keep at least one place.
+
+**Changing just the region:** tap the region on a card, for example **East ⌄**.
+
+**How the cards fit:** the app always tries to show all your places on one screen without scrolling. With one or two places you get big cards with a health tip. As you add more, the cards get smaller, then sit two per row (three on iPad), and with many places they switch to a mini layout: a small gauge with the band and name beside it. Only if even that doesn't fit, for example 8 places on a small iPhone, does the screen scroll.
 
 **Refreshing:** tap the round refresh button at the top. The app also refreshes by itself each time you come back to it.
 
-**Rearranging the cards:** touch and hold a card (Home, Office or Across Singapore) until it lifts, then drag it over another card and let go. The app remembers the order.
+**Rearranging the cards:** touch and hold any card (including Across Singapore) until it lifts, then drag it over another card and let go. The app remembers the order.
 
-**Turning your iPhone sideways:** the cards sit two per row, with Home and Office side by side. Turn it back upright for one column.
+**Turning your iPhone sideways:** more cards fit on each row. Turn it back upright to return to the usual layout.
 
-**Across Singapore** shows all five regions as coloured circles, with your home and office regions outlined.
+**Across Singapore** shows all five regions as coloured circles. Regions with one of your places are outlined and show that place's icon.
 
 ## Using the app on iPad
 
 Everything works the same as on iPhone, with a layout made for the bigger screen:
 
-- **Two cards per row**, in both portrait and landscape: Home and Office side by side, with Across Singapore below. The cards stop growing on very large screens, so they don't stretch across the whole display.
-- **Split View, Slide Over and Stage Manager:** if you make the app's window narrow, it switches to one column like on iPhone. Widen it again for two per row.
+- **More cards per row:** two big cards per row, or three smaller ones when you have more places, in both portrait and landscape. Across Singapore always gets a full row. The cards stop growing on very large screens, so they don't stretch across the whole display.
+- **Split View, Slide Over and Stage Manager:** if you make the app's window narrow, it switches to the iPhone layout. Widen it again for more per row.
 - **Rearranging with a trackpad or mouse:** click and hold a card, then drag it. With your finger, touch and hold, then drag.
 - **Region choices** open in a panel in the middle of the screen instead of sliding up from the bottom.
 
@@ -75,7 +83,7 @@ Everything works the same as on iPhone, with a layout made for the bigger screen
 
 **Adding it on iPad:** the same steps work. You can also put the widget in the **Today View** (swipe right on the first Home Screen page).
 
-**Choosing the widget's regions:** touch and hold the widget, tap **Edit Widget**, then choose **Home** and **Office**. The widget keeps its own regions, so it can show different places from the app if you like.
+**Choosing the widget's regions:** touch and hold the widget, tap **Edit Widget**, then choose the regions for its two slots (labelled **Home** and **Office**). The widget keeps its own regions; it doesn't use the custom names and icons from the app.
 
 The widget shows Home and Office side by side, on a background coloured by the worse of the two, plus the time of NEA's latest update. It refreshes about once an hour (iOS decides the exact timing to save battery), and whenever you open the app. If you're offline, it keeps showing the last reading it got. Tap it to open the app.
 
