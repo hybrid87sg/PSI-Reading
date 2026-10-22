@@ -1,46 +1,66 @@
 import SwiftUI
 
-/// The Home or Office card: region chip, ring gauge, band and health tip.
-struct PlaceCard: View {
-    let place: Place
-    let region: Region
+/// One location's card: icon, name, region chip, ring gauge, band and health tip.
+/// Compact sizes stack the gauge above the band and show the region instead of the tip.
+struct LocationCard: View {
+    let location: Location
     let psi: Int?
-    let pick: () -> Void
+    let size: CardSize
+    let pickRegion: () -> Void
 
     var body: some View {
         let band = Band.of(psi)
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: size.compact ? .center : .leading, spacing: size.compact ? 8 : 12) {
             HStack(spacing: 8) {
-                Text(place.emoji).font(.title2)
-                Text(place.title).font(.system(size: 19, weight: .medium))
-                Spacer()
-                Button(action: pick) {
-                    HStack(spacing: 6) {
-                        Text(region.label)
-                        Image(systemName: "chevron.down").font(.caption2.weight(.bold))
-                    }
-                    .font(.subheadline.weight(.medium))
-                    .foregroundStyle(.white)
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 8)
-                    .background(Capsule().fill(Color.cardRaised))
-                }
-                .accessibilityLabel("\(place.title) region: \(region.label). Change")
-            }
-            HStack(spacing: 18) {
-                GaugeView(psi: psi).frame(width: 128, height: 128)
-                VStack(alignment: .leading, spacing: 10) {
-                    Text(band.name)
+                Text(location.icon).font(size.compact ? .title3 : .title2)
+                Text(location.name)
+                    .font(.system(size: size.compact ? 16 : 19, weight: .medium))
+                    .lineLimit(1)
+                Spacer(minLength: 0)
+                if !size.compact {
+                    Button(action: pickRegion) {
+                        HStack(spacing: 6) {
+                            Text(location.region.label)
+                            Image(systemName: "chevron.down").font(.caption2.weight(.bold))
+                        }
                         .font(.subheadline.weight(.medium))
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 5)
-                        .background(Capsule().fill(band.color))
-                    Text(band.advice)
-                        .foregroundStyle(Color.cardMuted)
-                        .fixedSize(horizontal: false, vertical: true)
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 8)
+                        .background(Capsule().fill(Color.cardRaised))
+                    }
+                    .accessibilityLabel("\(location.name) region: \(location.region.label). Change")
+                }
+            }
+            if size.compact {
+                GaugeView(psi: psi).frame(width: size.gauge, height: size.gauge)
+                VStack(spacing: 4) {
+                    pill(band, short: true)
+                    Text(location.region.label).font(.footnote).foregroundStyle(Color.cardMuted)
+                }
+            } else {
+                HStack(spacing: 18) {
+                    GaugeView(psi: psi).frame(width: size.gauge, height: size.gauge)
+                    VStack(alignment: .leading, spacing: 10) {
+                        pill(band, short: false)
+                        Text(band.advice)
+                            .foregroundStyle(Color.cardMuted)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
                 }
             }
         }
+        .frame(maxWidth: .infinity, alignment: size.compact ? .center : .leading)
+    }
+
+    private func pill(_ band: Band, short: Bool) -> some View {
+        Text(short && psi == nil ? "No reading" : band.name)
+            .font(.subheadline.weight(.medium))
+            .lineLimit(1)
+            .minimumScaleFactor(0.8)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 5)
+            .background(Capsule().fill(band.color))
     }
 }
 
@@ -88,45 +108,42 @@ struct GaugeView: View {
     }
 }
 
-/// All five regions as coloured circles, with home and office outlined.
+/// All five regions as coloured circles; regions with a saved location are outlined
+/// and show that location's icon.
 struct RegionsCard: View {
     let reading: PSIReading?
-    let home: Region
-    let office: Region
+    let locations: [Location]
+    let size: CardSize
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
+        let dot: CGFloat = size.compact ? 38 : 46
+        VStack(alignment: .leading, spacing: size.compact ? 10 : 14) {
             Text("Across Singapore").font(.system(size: 17, weight: .medium))
             HStack(alignment: .top, spacing: 0) {
                 ForEach(Region.allCases) { region in
                     let psi = reading?.value(region)
-                    let mine = region == home || region == office
+                    let icons = locations.filter { $0.region == region }.prefix(3).map(\.icon).joined()
                     VStack(spacing: 6) {
                         Text(psi.map(String.init) ?? "–")
                             .font(.subheadline.bold())
-                            .frame(width: 46, height: 46)
+                            .frame(width: dot, height: dot)
                             .background(Circle().fill(psi.map { Band.of($0).color } ?? Color.cardEmpty))
-                            .overlay(Circle().strokeBorder(.white, lineWidth: mine ? 3 : 0))
+                            .overlay(Circle().strokeBorder(.white, lineWidth: icons.isEmpty ? 0 : 3))
                         Text(region.label)
                             .font(.caption)
                             .foregroundStyle(Color.cardMuted)
-                        Text(tag(region)).font(.caption)
+                        Text(icons.isEmpty ? " " : icons).font(.caption)
                     }
                     .frame(maxWidth: .infinity)
                 }
             }
         }
     }
-
-    private func tag(_ region: Region) -> String {
-        let tag = (region == home ? "🏠" : "") + (region == office ? "🏢" : "")
-        return tag.isEmpty ? " " : tag
-    }
 }
 
 /// Region list with example towns, used for first-run setup and later changes.
 struct RegionPicker: View {
-    let place: Place
+    let title: String
     let selected: Region
     let pick: (Region) -> Void
 
@@ -150,7 +167,7 @@ struct RegionPicker: View {
                 }
                 .foregroundStyle(.primary)
             }
-            .navigationTitle("Where is your \(place.title.lowercased())?")
+            .navigationTitle(title)
             .navigationBarTitleDisplayMode(.inline)
         }
         .presentationDetents([.medium, .large])

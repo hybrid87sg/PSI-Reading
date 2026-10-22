@@ -38,6 +38,14 @@ xcrun simctl terminate "$IPHONE" sg.psi.app || true
 xcrun simctl launch "$IPHONE" sg.psi.app -setup_done YES
 sleep 15
 xcrun simctl io "$IPHONE" screenshot "$OUT/psi-ios-iphone.png"
+# More locations, passed as launch arguments (they override the saved settings for that launch).
+HERE=$(dirname "$0")
+for n in 4 8; do
+  xcrun simctl terminate "$IPHONE" sg.psi.app || true
+  xcrun simctl launch "$IPHONE" sg.psi.app -setup_done YES -locations "$(cat "$HERE/locations-$n.json")" -card_order ""
+  sleep 12
+  xcrun simctl io "$IPHONE" screenshot "$OUT/psi-ios-iphone-$n-locations.png"
+done
 xcrun simctl shutdown "$IPHONE" || true
 
 IPAD=$(pick "iPad Pro 13" "iPad Pro" "iPad Air" "iPad")
@@ -45,4 +53,8 @@ start "$IPAD"
 xcrun simctl launch "$IPAD" sg.psi.app -setup_done YES
 sleep 15
 xcrun simctl io "$IPAD" screenshot "$OUT/psi-ios-ipad.png"
+xcrun simctl terminate "$IPAD" sg.psi.app || true
+xcrun simctl launch "$IPAD" sg.psi.app -setup_done YES -locations "$(cat "$HERE/locations-8.json")" -card_order ""
+sleep 12
+xcrun simctl io "$IPAD" screenshot "$OUT/psi-ios-ipad-8-locations.png"
 xcrun simctl shutdown "$IPAD" || true
