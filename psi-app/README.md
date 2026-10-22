@@ -7,6 +7,13 @@ A simple Android app that shows Singapore's **24-hr PSI** for two places: your h
 - Each card shows the reading with a colour band: Good (0–50), Moderate (51–100), Unhealthy (101–200), Very unhealthy (201–300), Hazardous (300+).
 - The data refreshes each time you open the app, or when you tap **Refresh**.
 
+## Home-screen widget
+
+Long-press your home screen, choose **Widgets**, and drag **PSI Home & Office** onto it.
+It shows the Home and Office readings side by side, coloured by band, with the time of the last NEA update.
+It refreshes about once an hour and whenever you open the app. Tap it to open the app.
+To change which regions it shows, change the dropdowns in the app.
+
 ## Getting the APK
 
 The GitHub Actions workflow `Build PSI app APK` builds a debug APK on every push to `psi-app/`.
