@@ -67,7 +67,8 @@ struct ContentView: View {
                 page(.large, wide: wide)
                 page(.medium, wide: wide)
                 page(.small, wide: wide)
-                ScrollView { page(.tiny, wide: wide) }
+                page(.tiny, wide: wide)
+                ScrollView { page(.mini, wide: wide) }
             }
             .frame(maxHeight: .infinity, alignment: .top)
         }

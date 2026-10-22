@@ -10,6 +10,25 @@ struct LocationCard: View {
 
     var body: some View {
         let band = Band.of(psi)
+        if size == .mini {
+            // Gauge on the left; band and name on the right; no header row.
+            HStack(spacing: 10) {
+                GaugeView(psi: psi).frame(width: size.gauge, height: size.gauge)
+                VStack(alignment: .leading, spacing: 6) {
+                    pill(band, short: true)
+                    Text("\(location.icon) \(location.name)")
+                        .font(.footnote)
+                        .foregroundStyle(Color.cardMuted)
+                        .lineLimit(1)
+                }
+                Spacer(minLength: 0)
+            }
+        } else {
+            regularBody(band)
+        }
+    }
+
+    private func regularBody(_ band: Band) -> some View {
         VStack(alignment: size.compact ? .center : .leading, spacing: size.compact ? 8 : 12) {
             HStack(spacing: 8) {
                 Text(location.icon).font(size.compact ? .title3 : .title2)

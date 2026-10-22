@@ -59,6 +59,8 @@ struct Location: Codable, Identifiable, Equatable {
 /// compact sizes stack the gauge above the band and put more cards on each row.
 enum CardSize: CaseIterable {
     case large, medium, small, tiny
+    /// Small gauge beside the band and name, for many locations on a small screen.
+    case mini
 
     var gauge: CGFloat {
         switch self {
@@ -66,6 +68,7 @@ enum CardSize: CaseIterable {
         case .medium: return 104
         case .small: return 96
         case .tiny: return 76
+        case .mini: return 56
         }
     }
 
@@ -75,6 +78,7 @@ enum CardSize: CaseIterable {
         case .medium: return 16
         case .small: return 14
         case .tiny: return 12
+        case .mini: return 10
         }
     }
 
@@ -84,8 +88,9 @@ enum CardSize: CaseIterable {
         case .medium: return 14
         case .small: return 12
         case .tiny: return 10
+        case .mini: return 8
         }
     }
 
-    var compact: Bool { self == .small || self == .tiny }
+    var compact: Bool { self == .small || self == .tiny || self == .mini }
 }
