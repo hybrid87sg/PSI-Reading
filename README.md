@@ -70,13 +70,21 @@ For what each band means for outdoor activity, see NEA's health advisory on [haz
 1. Long-press an empty spot on your home screen and tap **Widgets**.
 2. Find **PSI Home & Office** and drag it onto your screen.
 
-The widget shows your first two places (in the order of your cards) side by side, on a background coloured by the worse of the two, plus the time of NEA's latest update. To change which places it shows, move those cards to the top in the app. It:
+The widget shows your places in the same order as your cards, on a background coloured by the worst reading it shows, plus the time of NEA's latest update.
+
+**Resizing it:** long-press the widget, then drag the handles on its edges. It shows as many places as fit:
+
+- **Smallest (2 cells wide):** just your first place.
+- **Default (3 × 2):** your first two places side by side.
+- **Wider:** up to four places per row.
+- **Taller:** up to three rows, so a large widget can show up to 12 places. The numbers get a little smaller when it's crowded.
+
+To change which places appear first, move those cards to the top in the app. It:
 
 - refreshes about once an hour (Android decides the exact timing to save battery);
 - also refreshes whenever you open the app or change a region;
 - keeps showing the last reading it got if your phone is offline;
 - opens the app when you tap it.
-
 
 ## Installing it
 
