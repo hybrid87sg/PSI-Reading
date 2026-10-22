@@ -24,14 +24,14 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.14.3'
-      - name: Build debug APK
-        run: gradle assembleDebug --no-daemon
+      - name: Build signed APK
+        run: gradle assembleRelease --no-daemon
       - uses: actions/upload-artifact@v4
         with:
           name: psi-app-apk
-          path: psi-app/app/build/outputs/apk/debug/app-debug.apk
+          path: psi-app/app/build/outputs/apk/release/app-release.apk
       - name: Rename APK for download
-        run: cp app/build/outputs/apk/debug/app-debug.apk psi-app.apk
+        run: cp app/build/outputs/apk/release/app-release.apk psi-app.apk
       - name: Publish APK to the "PSI app (latest)" release
         uses: softprops/action-gh-release@v2
         with:
@@ -64,7 +64,7 @@ jobs:
           target: google_apis
           arch: x86_64
           script: |
-            adb install -r app-debug.apk
+            adb install -r app-release.apk
             adb shell am start -n sg.psi.app/.MainActivity
             sleep 20
             adb exec-out screencap -p > psi-app-screenshot.png
