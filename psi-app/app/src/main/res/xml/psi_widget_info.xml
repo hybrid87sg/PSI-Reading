@@ -1,13 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- NEA updates PSI hourly; Android may batch updates, so the widget refreshes about once an hour. -->
+<!-- NEA updates PSI hourly; Android may batch updates, so the widget refreshes about once an hour.
+     Resizable from 2x2 cells up: it shows as many places as fit (see PsiWidget). -->
 <appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
     android:minWidth="180dp"
     android:minHeight="110dp"
+    android:minResizeWidth="110dp"
+    android:minResizeHeight="100dp"
     android:targetCellWidth="3"
     android:targetCellHeight="2"
     android:updatePeriodMillis="3600000"
-    android:initialLayout="@layout/widget_psi"
-    android:previewLayout="@layout/widget_psi"
+    android:initialLayout="@layout/widget_preview"
+    android:previewLayout="@layout/widget_preview"
     android:resizeMode="horizontal|vertical"
     android:widgetCategory="home_screen"
     android:description="@string/widget_description" />
