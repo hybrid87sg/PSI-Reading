@@ -25,12 +25,22 @@ final class PsiClient {
 
     static final String[] REGIONS = {"north", "south", "east", "west", "central"};
     static final String[] REGION_LABELS = {"North", "South", "East", "West", "Central"};
+    /** Example towns in each NEA region, to help people pick theirs. */
+    static final String[] REGION_AREAS = {
+            "Woodlands, Yishun, Sembawang",
+            "Bukit Merah, Telok Blangah, Sentosa",
+            "Tampines, Bedok, Pasir Ris, Changi",
+            "Jurong, Clementi, Bukit Batok, Choa Chu Kang",
+            "Toa Payoh, Bishan, Orchard, Novena",
+    };
 
     static final String PREFS = "psi";
     static final String PREF_HOME = "home_region";
     static final String PREF_OFFICE = "office_region";
     static final String DEFAULT_HOME = "east";
     static final String DEFAULT_OFFICE = "central";
+    static final String PREF_SETUP_DONE = "setup_done";
+    static final String PREF_CARD_ORDER = "card_order";
     private static final String PREF_CACHE = "last_result";
 
     private PsiClient() {

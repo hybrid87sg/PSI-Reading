@@ -2,27 +2,45 @@ package sg.psi.app;
 
 import android.app.Activity;
 import android.app.AlertDialog;
+import android.content.ClipData;
 import android.content.SharedPreferences;
 import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.text.SpannableStringBuilder;
+import android.text.Spanned;
+import android.text.TextUtils;
+import android.text.style.ForegroundColorSpan;
+import android.text.style.RelativeSizeSpan;
+import android.view.DragEvent;
 import android.view.Gravity;
+import android.view.HapticFeedbackConstants;
 import android.view.View;
+import android.view.ViewGroup;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 public class MainActivity extends Activity {
+
+    /** Screens at least this wide (unfolded foldables, tablets, landscape) show two cards per row. */
+    private static final int WIDE_DP = 600;
+    /** Content never gets wider than this, so cards don't stretch on very large screens. */
+    private static final int MAX_CONTENT_DP = 840;
+    private static final List<String> DEFAULT_ORDER = Arrays.asList("home", "office", "regions");
 
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
     private final Handler main = new Handler(Looper.getMainLooper());
@@ -32,9 +50,14 @@ public class MainActivity extends Activity {
     private View refresh;
     private TextView updated;
     private LinearLayout regionsRow;
+    private LinearLayout cards;
     private Card home;
     private Card office;
     private Map<String, Integer> latest = new LinkedHashMap<>();
+    private final Map<String, View> cardViews = new LinkedHashMap<>();
+    private List<String> order;
+    private String dragging;
+    private String lastDropTarget;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -56,11 +79,154 @@ public class MainActivity extends Activity {
                 PsiClient.PREF_OFFICE, PsiClient.DEFAULT_OFFICE);
 
         refresh.setOnClickListener(v -> load());
+        findViewById(R.id.places).setOnClickListener(v -> choosePlaces());
+
+        cards = findViewById(R.id.cards);
+        cardViews.put("home", findViewById(R.id.home_card));
+        cardViews.put("office", findViewById(R.id.office_card));
+        cardViews.put("regions", findViewById(R.id.regions_card));
+        order = loadOrder();
+        fitContentWidth();
+        layoutCards();
+        setUpDragging();
 
         // Show the last reading straight away while the fresh one loads.
         PsiClient.Result cached = PsiClient.load(prefs);
         if (cached != null) latest = cached.readings;
         render(false);
+
+        // First launch: ask where home and office are.
+        if (!prefs.getBoolean(PsiClient.PREF_SETUP_DONE, false)) {
+            prefs.edit().putBoolean(PsiClient.PREF_SETUP_DONE, true).apply();
+            home.pickRegion(() -> office.pickRegion(null));
+        }
+    }
+
+    private void choosePlaces() {
+        String[] items = {
+                "🏠  Home · " + PsiClient.label(home.region),
+                "🏢  Office · " + PsiClient.label(office.region),
+        };
+        new AlertDialog.Builder(this)
+                .setTitle("Your places")
+                .setItems(items, (dialog, which) -> (which == 0 ? home : office).pickRegion(null))
+                .show();
+    }
+
+    private List<String> loadOrder() {
+        List<String> result = new ArrayList<>();
+        String saved = prefs.getString(PsiClient.PREF_CARD_ORDER, "");
+        for (String key : saved.split(",")) {
+            if (DEFAULT_ORDER.contains(key) && !result.contains(key)) result.add(key);
+        }
+        for (String key : DEFAULT_ORDER) {
+            if (!result.contains(key)) result.add(key);
+        }
+        return result;
+    }
+
+    private void fitContentWidth() {
+        int widthDp = getResources().getConfiguration().screenWidthDp;
+        if (widthDp <= MAX_CONTENT_DP) return;
+        View content = findViewById(R.id.content);
+        int side = dp((widthDp - MAX_CONTENT_DP) / 2 + 20);
+        content.setPadding(side, content.getPaddingTop(), side, content.getPaddingBottom());
+    }
+
+    /** Places the cards in the saved order: one column, or two per row on wide screens. */
+    private void layoutCards() {
+        for (View card : cardViews.values()) {
+            ViewGroup parent = (ViewGroup) card.getParent();
+            if (parent != null) parent.removeView(card);
+        }
+        cards.removeAllViews();
+
+        boolean wide = getResources().getConfiguration().screenWidthDp >= WIDE_DP;
+        int gap = dp(16);
+        for (int i = 0; i < order.size(); i += wide ? 2 : 1) {
+            View first = cardViews.get(order.get(i));
+            View second = wide && i + 1 < order.size() ? cardViews.get(order.get(i + 1)) : null;
+            LinearLayout.LayoutParams rowParams = new LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+            rowParams.bottomMargin = gap;
+            if (second == null) {
+                cards.addView(first, rowParams);
+                continue;
+            }
+            LinearLayout row = new LinearLayout(this);
+            row.setOrientation(LinearLayout.HORIZONTAL);
+            row.setBaselineAligned(false);
+            LinearLayout.LayoutParams left = new LinearLayout.LayoutParams(0,
+                    LinearLayout.LayoutParams.MATCH_PARENT, 1f);
+            left.setMarginEnd(gap / 2);
+            LinearLayout.LayoutParams right = new LinearLayout.LayoutParams(0,
+                    LinearLayout.LayoutParams.MATCH_PARENT, 1f);
+            right.setMarginStart(gap / 2);
+            row.addView(first, left);
+            row.addView(second, right);
+            cards.addView(row, rowParams);
+        }
+    }
+
+    /** Long-press a card to pick it up; the other cards make room as it is dragged over them. */
+    private void setUpDragging() {
+        for (Map.Entry<String, View> entry : cardViews.entrySet()) {
+            String key = entry.getKey();
+            entry.getValue().setOnLongClickListener(v -> {
+                dragging = key;
+                lastDropTarget = null;
+                v.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS);
+                v.startDragAndDrop(ClipData.newPlainText("card", key),
+                        new View.DragShadowBuilder(v), null, 0);
+                v.setAlpha(0.35f);
+                return true;
+            });
+        }
+        cards.setOnDragListener((v, event) -> {
+            switch (event.getAction()) {
+                case DragEvent.ACTION_DRAG_STARTED:
+                    return dragging != null;
+                case DragEvent.ACTION_DRAG_LOCATION:
+                    moveDraggedCard(event.getX(), event.getY());
+                    return true;
+                case DragEvent.ACTION_DRAG_ENDED:
+                    if (dragging != null) {
+                        cardViews.get(dragging).setAlpha(1f);
+                        prefs.edit().putString(PsiClient.PREF_CARD_ORDER, TextUtils.join(",", order)).apply();
+                        dragging = null;
+                    }
+                    return true;
+                default:
+                    return true;
+            }
+        });
+    }
+
+    private void moveDraggedCard(float x, float y) {
+        int[] origin = new int[2];
+        cards.getLocationOnScreen(origin);
+        int px = origin[0] + Math.round(x);
+        int py = origin[1] + Math.round(y);
+        int[] loc = new int[2];
+        for (String key : order) {
+            if (key.equals(dragging)) continue;
+            View card = cardViews.get(key);
+            card.getLocationOnScreen(loc);
+            boolean inside = px >= loc[0] && px < loc[0] + card.getWidth()
+                    && py >= loc[1] && py < loc[1] + card.getHeight();
+            if (!inside) continue;
+            // Cards differ in height, so after a swap the pointer can still be over the same
+            // card; wait until it leaves before swapping again to avoid flicking back and forth.
+            if (key.equals(lastDropTarget)) return;
+            int from = order.indexOf(dragging);
+            int to = order.indexOf(key);
+            order.remove(from);
+            order.add(to, dragging);
+            lastDropTarget = key;
+            layoutCards();
+            return;
+        }
+        lastDropTarget = null;
     }
 
     @Override
@@ -184,22 +350,36 @@ public class MainActivity extends Activity {
             advice = view.findViewById(R.id.advice);
             gauge = view.findViewById(R.id.gauge);
             region = prefs.getString(prefKey, defaultRegion);
-            regionChip.setOnClickListener(v -> pickRegion());
+            regionChip.setOnClickListener(v -> pickRegion(null));
         }
 
         Integer value() {
             return latest.get(region);
         }
 
-        void pickRegion() {
+        /** Shows the region list with example towns; runs {@code then} after a region is picked. */
+        void pickRegion(Runnable then) {
+            CharSequence[] items = new CharSequence[PsiClient.REGIONS.length];
+            int checked = 0;
+            for (int i = 0; i < items.length; i++) {
+                SpannableStringBuilder item = new SpannableStringBuilder(PsiClient.REGION_LABELS[i]);
+                int start = item.length();
+                item.append("\n").append(PsiClient.REGION_AREAS[i]);
+                item.setSpan(new RelativeSizeSpan(0.8f), start, item.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+                item.setSpan(new ForegroundColorSpan(0xFF6B7280), start, item.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+                items[i] = item;
+                if (PsiClient.REGIONS[i].equals(region)) checked = i;
+            }
             new AlertDialog.Builder(MainActivity.this)
                     .setTitle("Where is your " + title.toLowerCase(Locale.ROOT) + "?")
-                    .setItems(PsiClient.REGION_LABELS, (dialog, which) -> {
+                    .setSingleChoiceItems(items, checked, (dialog, which) -> {
+                        dialog.dismiss();
                         region = PsiClient.REGIONS[which];
                         prefs.edit().putString(prefKey, region).apply();
-                        render(false);
+                        MainActivity.this.render(false);
                         gauge.setValue(value(), true);
                         PsiWidget.updateAll(getApplicationContext());
+                        if (then != null) then.run();
                     })
                     .show();
         }

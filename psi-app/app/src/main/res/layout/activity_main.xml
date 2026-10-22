@@ -8,6 +8,7 @@
     android:fitsSystemWindows="true">
 
     <LinearLayout
+        android:id="@+id/content"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
@@ -46,6 +47,16 @@
             </LinearLayout>
 
             <ImageButton
+                android:id="@+id/places"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:layout_marginEnd="10dp"
+                android:background="@drawable/glass_circle"
+                android:contentDescription="Set home and office regions"
+                android:src="@android:drawable/ic_menu_mylocation"
+                android:tint="#FFFFFF" />
+
+            <ImageButton
                 android:id="@+id/refresh"
                 android:layout_width="48dp"
                 android:layout_height="48dp"
@@ -70,45 +81,55 @@
             android:textColor="#FFFFFF"
             android:textSize="13sp" />
 
-        <include
-            android:id="@+id/home_card"
-            layout="@layout/psi_card" />
-
-        <include
-            android:id="@+id/office_card"
-            layout="@layout/psi_card" />
-
+        <!-- Cards are placed here in the user's chosen order: one column on phones,
+             two per row on wide screens such as unfolded foldables. -->
         <LinearLayout
+            android:id="@+id/cards"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:background="@drawable/card_bg"
-            android:elevation="6dp"
-            android:orientation="vertical"
-            android:padding="20dp">
+            android:orientation="vertical">
 
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:fontFamily="sans-serif-medium"
-                android:text="Across Singapore"
-                android:textColor="#FFFFFF"
-                android:textSize="17sp" />
+            <include
+                android:id="@+id/home_card"
+                layout="@layout/psi_card" />
+
+            <include
+                android:id="@+id/office_card"
+                layout="@layout/psi_card" />
 
             <LinearLayout
-                android:id="@+id/regions"
+                android:id="@+id/regions_card"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="14dp"
-                android:orientation="horizontal" />
+                android:background="@drawable/card_bg"
+                android:elevation="6dp"
+                android:orientation="vertical"
+                android:padding="20dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:fontFamily="sans-serif-medium"
+                    android:text="Across Singapore"
+                    android:textColor="#FFFFFF"
+                    android:textSize="17sp" />
+
+                <LinearLayout
+                    android:id="@+id/regions"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="14dp"
+                    android:orientation="horizontal" />
+            </LinearLayout>
         </LinearLayout>
 
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
             android:alpha="0.75"
             android:gravity="center"
-            android:text="24-hour PSI · National Environment Agency via data.gov.sg"
+            android:text="Long-press a card to move it\n24-hour PSI · National Environment Agency via data.gov.sg"
+            android:lineSpacingExtra="4dp"
             android:textColor="#FFFFFF"
             android:textSize="12sp" />
     </LinearLayout>
