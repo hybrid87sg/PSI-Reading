@@ -42,11 +42,17 @@ For what each band means for outdoor activity, see NEA's health advisory on [haz
 
 ## Using the app
 
-1. Open the app. It fetches the latest readings straight away, and the gauges fill up to the current values.
-2. On the **Home** card, tap the region chip (for example **East ▾**) and pick your home's region. Do the same on the **Office** card.
+1. The first time you open the app, it asks **Where is your home?** and then **Where is your office?** Each region in the list names a few towns in it, so you can tell which one you're in.
+2. The app fetches the latest readings, and the gauges fill up to the current values.
 3. That's it. The app remembers your choices.
 
-Below the cards, **Across Singapore** shows all five regions as coloured circles, with your home and office regions outlined. The round button at the top right fetches the readings again.
+**Changing your regions:** tap the location button at the top (next to refresh), or tap the region chip on a card (for example **East ▾**).
+
+**Rearranging the cards:** long-press a card (Home, Office or Across Singapore) and drag it to a new spot. The app remembers the order.
+
+**Across Singapore** shows all five regions as coloured circles, with your home and office regions outlined. The round refresh button fetches the readings again.
+
+**Foldables and wide screens:** on an unfolded foldable, a tablet or a phone turned sideways, the cards sit two per row. Folded or in normal portrait, they're in one column.
 
 ## The home-screen widget
 
