@@ -38,11 +38,17 @@ xcrun simctl terminate "$IPHONE" sg.psi.app || true
 xcrun simctl launch "$IPHONE" sg.psi.app -setup_done YES
 sleep 15
 xcrun simctl io "$IPHONE" screenshot "$OUT/psi-ios-iphone.png"
-# More locations, passed as launch arguments (they override the saved settings for that launch).
+# More locations, written straight into the app's saved settings on the simulator.
 HERE=$(dirname "$0")
+seed() {
+  xcrun simctl terminate "$1" sg.psi.app || true
+  xcrun simctl spawn "$1" defaults write sg.psi.app locations -string "$(cat "$HERE/locations-$2.json")"
+  xcrun simctl spawn "$1" defaults write sg.psi.app card_order -string ""
+  xcrun simctl spawn "$1" defaults write sg.psi.app setup_done -bool YES
+}
 for n in 4 8; do
-  xcrun simctl terminate "$IPHONE" sg.psi.app || true
-  xcrun simctl launch "$IPHONE" sg.psi.app -setup_done YES -locations "$(cat "$HERE/locations-$n.json")" -card_order ""
+  seed "$IPHONE" "$n"
+  xcrun simctl launch "$IPHONE" sg.psi.app
   sleep 12
   xcrun simctl io "$IPHONE" screenshot "$OUT/psi-ios-iphone-$n-locations.png"
 done
@@ -53,8 +59,8 @@ start "$IPAD"
 xcrun simctl launch "$IPAD" sg.psi.app -setup_done YES
 sleep 15
 xcrun simctl io "$IPAD" screenshot "$OUT/psi-ios-ipad.png"
-xcrun simctl terminate "$IPAD" sg.psi.app || true
-xcrun simctl launch "$IPAD" sg.psi.app -setup_done YES -locations "$(cat "$HERE/locations-8.json")" -card_order ""
+seed "$IPAD" 8
+xcrun simctl launch "$IPAD" sg.psi.app
 sleep 12
 xcrun simctl io "$IPAD" screenshot "$OUT/psi-ios-ipad-8-locations.png"
 xcrun simctl shutdown "$IPAD" || true
