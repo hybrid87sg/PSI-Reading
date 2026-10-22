@@ -55,21 +55,25 @@ public class MainActivity extends Activity {
      * scrolling; compact sizes stack the gauge above the band and put more cards on each row.
      */
     private enum Level {
-        LARGE(128, 20, 16, false),
-        MEDIUM(104, 16, 14, false),
-        SMALL(96, 14, 12, true),
-        TINY(76, 12, 10, true);
+        LARGE(128, 20, 16, false, false),
+        MEDIUM(104, 16, 14, false, false),
+        SMALL(96, 14, 12, true, false),
+        TINY(76, 12, 10, true, false),
+        /** Small gauge beside the band and name, for many locations on a small screen. */
+        MINI(56, 10, 8, true, true);
 
         final int gaugeDp;
         final int paddingDp;
         final int gapDp;
         final boolean compact;
+        final boolean mini;
 
-        Level(int gaugeDp, int paddingDp, int gapDp, boolean compact) {
+        Level(int gaugeDp, int paddingDp, int gapDp, boolean compact, boolean mini) {
             this.gaugeDp = gaugeDp;
             this.paddingDp = paddingDp;
             this.gapDp = gapDp;
             this.compact = compact;
+            this.mini = mini;
         }
     }
 
@@ -88,6 +92,9 @@ public class MainActivity extends Activity {
     private final Map<String, Card> cardsById = new LinkedHashMap<>();
     private List<String> order;
     private Level level = Level.LARGE;
+    /** Columns and gap the cards were last laid out with, to skip needless re-layouts. */
+    private int laidOutColumns;
+    private int laidOutGap;
     private String dragging;
     private String lastDropTarget;
     private Map<String, Integer> latest = new LinkedHashMap<>();
@@ -249,7 +256,7 @@ public class MainActivity extends Activity {
         int width = root.getWidth() - root.getPaddingLeft() - root.getPaddingRight();
         if (available <= 0 || width <= 0) return;
 
-        Level chosen = Level.TINY;
+        Level chosen = Level.MINI;
         for (Level candidate : Level.values()) {
             applyLevel(candidate);
             content.measure(View.MeasureSpec.makeMeasureSpec(width, View.MeasureSpec.EXACTLY),
@@ -269,7 +276,8 @@ public class MainActivity extends Activity {
         int pad = dp(level.paddingDp);
         regionsCard.setPadding(pad, pad, pad, pad);
         if (changed) renderRegions();
-        layoutCards();
+        // Re-layout only when the grid changes; moving cards restarts their gauges.
+        if (columns() != laidOutColumns || dp(level.gapDp) != laidOutGap) layoutCards();
     }
 
     private int columns() {
@@ -294,6 +302,8 @@ public class MainActivity extends Activity {
         cards.removeAllViews();
 
         int columns = columns();
+        laidOutColumns = columns;
+        laidOutGap = dp(level.gapDp);
         List<View> row = new ArrayList<>();
         for (String key : order) {
             if (key.equals(Location.REGIONS_CARD)) {
@@ -639,6 +649,7 @@ public class MainActivity extends Activity {
         final PsiGauge gauge;
         final LinearLayout body;
         final LinearLayout info;
+        final View header;
 
         Card(Location location) {
             this.location = location;
@@ -651,6 +662,7 @@ public class MainActivity extends Activity {
             gauge = view.findViewById(R.id.gauge);
             body = view.findViewById(R.id.body);
             info = view.findViewById(R.id.info);
+            header = view.findViewById(R.id.header);
             title.setMaxLines(1);
             title.setEllipsize(TextUtils.TruncateAt.END);
             regionChip.setOnClickListener(v -> pickRegion(location, null));
@@ -670,7 +682,7 @@ public class MainActivity extends Activity {
 
         /** Large sizes put the band and tip beside the gauge; compact ones stack them under it. */
         void applyLevel() {
-            boolean compact = level.compact;
+            boolean compact = level.compact && !level.mini;
             int pad = dp(level.paddingDp);
             view.setPadding(pad, pad, pad, pad);
 
@@ -691,7 +703,31 @@ public class MainActivity extends Activity {
             advice.setGravity(compact ? Gravity.CENTER_HORIZONTAL : Gravity.START);
             advice.setTextSize(compact ? 13 : 15);
 
-            regionChip.setVisibility(compact ? View.GONE : View.VISIBLE);
+            if (level.mini) {
+                // Gauge on the left; band and name on the right; no header row.
+                body.setOrientation(LinearLayout.HORIZONTAL);
+                body.setGravity(Gravity.CENTER_VERTICAL);
+                infoParams.width = 0;
+                infoParams.weight = 1;
+                infoParams.setMarginStart(dp(10));
+                infoParams.topMargin = 0;
+                info.setLayoutParams(infoParams);
+                LinearLayout.LayoutParams bodyParams = (LinearLayout.LayoutParams) body.getLayoutParams();
+                bodyParams.topMargin = 0;
+                body.setLayoutParams(bodyParams);
+                advice.setTextSize(13);
+                advice.setMaxLines(1);
+                advice.setEllipsize(TextUtils.TruncateAt.END);
+            } else {
+                LinearLayout.LayoutParams bodyParams = (LinearLayout.LayoutParams) body.getLayoutParams();
+                bodyParams.topMargin = dp(12);
+                body.setLayoutParams(bodyParams);
+                advice.setMaxLines(Integer.MAX_VALUE);
+                advice.setEllipsize(null);
+            }
+            header.setVisibility(level.mini ? View.GONE : View.VISIBLE);
+            band.setTextSize(level.mini ? 12 : 14);
+            regionChip.setVisibility(level.compact ? View.GONE : View.VISIBLE);
             emoji.setTextSize(compact ? 18 : 22);
             title.setTextSize(compact ? 16 : 19);
             updateTexts();
@@ -708,7 +744,10 @@ public class MainActivity extends Activity {
             pill.setColor(psi == null ? 0xFF3C6B72 : PsiClient.bandColor(psi));
             band.setBackground(pill);
             band.setText(psi == null ? (level.compact ? "No reading" : "No reading yet") : PsiClient.bandName(psi));
-            if (level.compact) {
+            if (level.mini) {
+                // The header row is hidden, so the name goes under the band.
+                advice.setText(location.icon + " " + location.name);
+            } else if (level.compact) {
                 // No room for the tip; show the region instead, since the chip is hidden.
                 advice.setText(PsiClient.label(location.region));
             } else {
