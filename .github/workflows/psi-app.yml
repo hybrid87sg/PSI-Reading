@@ -100,6 +100,9 @@ jobs:
             psi-app/ci/seed.sh psi-app/ci/prefs-8-locations.xml
             sleep 15
             adb exec-out screencap -p > psi-app-8-locations.png
+            psi-app/ci/seed.sh psi-app/ci/prefs-12-locations.xml
+            sleep 15
+            adb exec-out screencap -p > psi-app-12-locations.png
             adb shell wm size 2208x1840
             sleep 12
             adb exec-out screencap -p > psi-app-foldable.png
@@ -112,4 +115,5 @@ jobs:
             psi-app-reordered.png
             psi-app-4-locations.png
             psi-app-8-locations.png
+            psi-app-12-locations.png
             psi-app-foldable.png
