@@ -10,6 +10,8 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     defaults:
       run:
         working-directory: psi-app
@@ -28,3 +30,14 @@ jobs:
         with:
           name: psi-app-apk
           path: psi-app/app/build/outputs/apk/debug/app-debug.apk
+      - name: Rename APK for download
+        run: cp app/build/outputs/apk/debug/app-debug.apk psi-app.apk
+      - name: Publish APK to the "PSI app (latest)" release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: psi-app-latest
+          name: PSI app (latest)
+          target_commitish: ${{ github.sha }}
+          body: Latest build of the PSI Home & Office Android app. Download psi-app.apk below and open it on your phone.
+          files: psi-app/psi-app.apk
+          make_latest: true

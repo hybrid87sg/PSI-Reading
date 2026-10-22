@@ -16,8 +16,8 @@ To change which regions it shows, change the dropdowns in the app.
 
 ## Getting the APK
 
-The GitHub Actions workflow `Build PSI app APK` builds a debug APK on every push to `psi-app/`.
-Open the workflow run in the repo's **Actions** tab and download the `psi-app-apk` artifact.
-Unzip it, copy `app-debug.apk` to your phone and open it. You need to allow "install unknown apps" for this.
+Every push to `psi-app/` builds the APK and attaches it to the **PSI app (latest)** release.
+On your phone, open the repo on GitHub, tap **Releases** → **PSI app (latest)** → `psi-app.apk`, then open the download.
+You need to allow "install unknown apps" for your browser.
 
 You can also open the `psi-app` folder in Android Studio (it will offer to set up Gradle) and click Run.
