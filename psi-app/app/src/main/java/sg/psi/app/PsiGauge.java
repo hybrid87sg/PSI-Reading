@@ -65,7 +65,8 @@ public class PsiGauge extends View {
 
     @Override
     protected void onDetachedFromWindow() {
-        if (animator != null) animator.cancel();
+        // Jump to the final value rather than freezing part-way if the card is moved mid-animation.
+        if (animator != null) animator.end();
         super.onDetachedFromWindow();
     }
 

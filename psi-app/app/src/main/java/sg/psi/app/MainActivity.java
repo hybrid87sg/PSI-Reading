@@ -9,6 +9,8 @@ import android.graphics.drawable.GradientDrawable;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.text.InputFilter;
+import android.text.InputType;
 import android.text.SpannableStringBuilder;
 import android.text.Spanned;
 import android.text.TextUtils;
@@ -19,13 +21,19 @@ import android.view.Gravity;
 import android.view.HapticFeedbackConstants;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.EditText;
+import android.widget.GridLayout;
 import android.widget.LinearLayout;
+import android.widget.RadioButton;
+import android.widget.RadioGroup;
+import android.widget.ScrollView;
+import android.widget.Space;
 import android.widget.TextView;
 
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Calendar;
+import java.util.Collections;
 import java.util.Date;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -36,28 +44,60 @@ import java.util.concurrent.Executors;
 
 public class MainActivity extends Activity {
 
-    /** Screens at least this wide (unfolded foldables, tablets, landscape) show two cards per row. */
+    /** Screens at least this wide (unfolded foldables, tablets, landscape) fit more cards per row. */
     private static final int WIDE_DP = 600;
     /** Content never gets wider than this, so cards don't stretch on very large screens. */
     private static final int MAX_CONTENT_DP = 840;
-    private static final List<String> DEFAULT_ORDER = Arrays.asList("home", "office", "regions");
+    private static final int MAX_LOCATIONS = 8;
+
+    /**
+     * Card sizes, largest first. The screen uses the largest size whose content fits without
+     * scrolling; compact sizes stack the gauge above the band and put more cards on each row.
+     */
+    private enum Level {
+        LARGE(128, 20, 16, false, false),
+        MEDIUM(104, 16, 14, false, false),
+        SMALL(96, 14, 12, true, false),
+        TINY(76, 12, 10, true, false),
+        /** Small gauge beside the band and name, for many locations on a small screen. */
+        MINI(56, 10, 8, true, true);
+
+        final int gaugeDp;
+        final int paddingDp;
+        final int gapDp;
+        final boolean compact;
+        final boolean mini;
+
+        Level(int gaugeDp, int paddingDp, int gapDp, boolean compact, boolean mini) {
+            this.gaugeDp = gaugeDp;
+            this.paddingDp = paddingDp;
+            this.gapDp = gapDp;
+            this.compact = compact;
+            this.mini = mini;
+        }
+    }
 
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
     private final Handler main = new Handler(Looper.getMainLooper());
 
     private SharedPreferences prefs;
-    private View root;
+    private ScrollView root;
+    private LinearLayout content;
     private View refresh;
     private TextView updated;
-    private LinearLayout regionsRow;
     private LinearLayout cards;
-    private Card home;
-    private Card office;
-    private Map<String, Integer> latest = new LinkedHashMap<>();
-    private final Map<String, View> cardViews = new LinkedHashMap<>();
+    private View regionsCard;
+    private LinearLayout regionsRow;
+    private final List<Location> locations = new ArrayList<>();
+    private final Map<String, Card> cardsById = new LinkedHashMap<>();
     private List<String> order;
+    private Level level = Level.LARGE;
+    /** Columns and gap the cards were last laid out with, to skip needless re-layouts. */
+    private int laidOutColumns;
+    private int laidOutGap;
     private String dragging;
     private String lastDropTarget;
+    private Map<String, Integer> latest = new LinkedHashMap<>();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -66,167 +106,44 @@ public class MainActivity extends Activity {
 
         prefs = getSharedPreferences(PsiClient.PREFS, MODE_PRIVATE);
         root = findViewById(R.id.root);
+        content = findViewById(R.id.content);
         refresh = findViewById(R.id.refresh);
         updated = findViewById(R.id.updated);
+        cards = findViewById(R.id.cards);
+        regionsCard = findViewById(R.id.regions_card);
         regionsRow = findViewById(R.id.regions);
         ((TextView) findViewById(R.id.greeting)).setText(greeting());
         ((TextView) findViewById(R.id.date)).setText(
                 new SimpleDateFormat("EEEE, d MMMM", Locale.getDefault()).format(new Date()));
 
-        home = new Card(findViewById(R.id.home_card), "🏠", "Home",
-                PsiClient.PREF_HOME, PsiClient.DEFAULT_HOME);
-        office = new Card(findViewById(R.id.office_card), "🏢", "Office",
-                PsiClient.PREF_OFFICE, PsiClient.DEFAULT_OFFICE);
-
         refresh.setOnClickListener(v -> load());
-        findViewById(R.id.places).setOnClickListener(v -> choosePlaces());
+        findViewById(R.id.places).setOnClickListener(v -> showLocations());
 
-        cards = findViewById(R.id.cards);
-        cardViews.put("home", findViewById(R.id.home_card));
-        cardViews.put("office", findViewById(R.id.office_card));
-        cardViews.put("regions", findViewById(R.id.regions_card));
-        order = loadOrder();
+        locations.addAll(Location.loadAll(prefs));
+        for (Location location : locations) cardsById.put(location.id, new Card(location));
+        order = Location.loadOrder(prefs, locations);
+        regionsCard.setOnLongClickListener(v -> startDrag(Location.REGIONS_CARD, v));
+        setUpDropTarget();
         fitContentWidth();
         layoutCards();
-        setUpDragging();
 
         // Show the last reading straight away while the fresh one loads.
         PsiClient.Result cached = PsiClient.load(prefs);
         if (cached != null) latest = cached.readings;
         render(false);
 
+        // Re-fit the cards whenever the screen size changes (rotation, folding, split screen).
+        root.addOnLayoutChangeListener((v, l, t, r, b, ol, ot, or, ob) -> {
+            if (r - l != or - ol || b - t != ob - ot) v.post(this::fitToScreen);
+        });
+
         // First launch: ask where home and office are.
         if (!prefs.getBoolean(PsiClient.PREF_SETUP_DONE, false)) {
             prefs.edit().putBoolean(PsiClient.PREF_SETUP_DONE, true).apply();
-            home.pickRegion(() -> office.pickRegion(null));
+            Location home = find("home");
+            Location office = find("office");
+            if (home != null) pickRegion(home, office == null ? null : () -> pickRegion(office, null));
         }
-    }
-
-    private void choosePlaces() {
-        String[] items = {
-                "🏠  Home · " + PsiClient.label(home.region),
-                "🏢  Office · " + PsiClient.label(office.region),
-        };
-        new AlertDialog.Builder(this)
-                .setTitle("Your places")
-                .setItems(items, (dialog, which) -> (which == 0 ? home : office).pickRegion(null))
-                .show();
-    }
-
-    private List<String> loadOrder() {
-        List<String> result = new ArrayList<>();
-        String saved = prefs.getString(PsiClient.PREF_CARD_ORDER, "");
-        for (String key : saved.split(",")) {
-            if (DEFAULT_ORDER.contains(key) && !result.contains(key)) result.add(key);
-        }
-        for (String key : DEFAULT_ORDER) {
-            if (!result.contains(key)) result.add(key);
-        }
-        return result;
-    }
-
-    private void fitContentWidth() {
-        int widthDp = getResources().getConfiguration().screenWidthDp;
-        if (widthDp <= MAX_CONTENT_DP) return;
-        View content = findViewById(R.id.content);
-        int side = dp((widthDp - MAX_CONTENT_DP) / 2 + 20);
-        content.setPadding(side, content.getPaddingTop(), side, content.getPaddingBottom());
-    }
-
-    /** Places the cards in the saved order: one column, or two per row on wide screens. */
-    private void layoutCards() {
-        for (View card : cardViews.values()) {
-            ViewGroup parent = (ViewGroup) card.getParent();
-            if (parent != null) parent.removeView(card);
-        }
-        cards.removeAllViews();
-
-        boolean wide = getResources().getConfiguration().screenWidthDp >= WIDE_DP;
-        int gap = dp(16);
-        for (int i = 0; i < order.size(); i += wide ? 2 : 1) {
-            View first = cardViews.get(order.get(i));
-            View second = wide && i + 1 < order.size() ? cardViews.get(order.get(i + 1)) : null;
-            LinearLayout.LayoutParams rowParams = new LinearLayout.LayoutParams(
-                    LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
-            rowParams.bottomMargin = gap;
-            if (second == null) {
-                cards.addView(first, rowParams);
-                continue;
-            }
-            LinearLayout row = new LinearLayout(this);
-            row.setOrientation(LinearLayout.HORIZONTAL);
-            row.setBaselineAligned(false);
-            LinearLayout.LayoutParams left = new LinearLayout.LayoutParams(0,
-                    LinearLayout.LayoutParams.MATCH_PARENT, 1f);
-            left.setMarginEnd(gap / 2);
-            LinearLayout.LayoutParams right = new LinearLayout.LayoutParams(0,
-                    LinearLayout.LayoutParams.MATCH_PARENT, 1f);
-            right.setMarginStart(gap / 2);
-            row.addView(first, left);
-            row.addView(second, right);
-            cards.addView(row, rowParams);
-        }
-    }
-
-    /** Long-press a card to pick it up; the other cards make room as it is dragged over them. */
-    private void setUpDragging() {
-        for (Map.Entry<String, View> entry : cardViews.entrySet()) {
-            String key = entry.getKey();
-            entry.getValue().setOnLongClickListener(v -> {
-                dragging = key;
-                lastDropTarget = null;
-                v.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS);
-                v.startDragAndDrop(ClipData.newPlainText("card", key),
-                        new View.DragShadowBuilder(v), null, 0);
-                v.setAlpha(0.35f);
-                return true;
-            });
-        }
-        cards.setOnDragListener((v, event) -> {
-            switch (event.getAction()) {
-                case DragEvent.ACTION_DRAG_STARTED:
-                    return dragging != null;
-                case DragEvent.ACTION_DRAG_LOCATION:
-                    moveDraggedCard(event.getX(), event.getY());
-                    return true;
-                case DragEvent.ACTION_DRAG_ENDED:
-                    if (dragging != null) {
-                        cardViews.get(dragging).setAlpha(1f);
-                        prefs.edit().putString(PsiClient.PREF_CARD_ORDER, TextUtils.join(",", order)).apply();
-                        dragging = null;
-                    }
-                    return true;
-                default:
-                    return true;
-            }
-        });
-    }
-
-    private void moveDraggedCard(float x, float y) {
-        int[] origin = new int[2];
-        cards.getLocationOnScreen(origin);
-        int px = origin[0] + Math.round(x);
-        int py = origin[1] + Math.round(y);
-        int[] loc = new int[2];
-        for (String key : order) {
-            if (key.equals(dragging)) continue;
-            View card = cardViews.get(key);
-            card.getLocationOnScreen(loc);
-            boolean inside = px >= loc[0] && px < loc[0] + card.getWidth()
-                    && py >= loc[1] && py < loc[1] + card.getHeight();
-            if (!inside) continue;
-            // Cards differ in height, so after a swap the pointer can still be over the same
-            // card; wait until it leaves before swapping again to avoid flicking back and forth.
-            if (key.equals(lastDropTarget)) return;
-            int from = order.indexOf(dragging);
-            int to = order.indexOf(key);
-            order.remove(from);
-            order.add(to, dragging);
-            lastDropTarget = key;
-            layoutCards();
-            return;
-        }
-        lastDropTarget = null;
     }
 
     @Override
@@ -266,22 +183,25 @@ public class MainActivity extends Activity {
     }
 
     private void render(boolean animate) {
-        home.render(animate);
-        office.render(animate);
+        for (Card card : cardsById.values()) card.bind(animate);
         renderRegions();
 
-        // The whole screen takes on the colour of the worse of the two readings.
-        Integer worst = home.value();
-        Integer other = office.value();
-        if (worst == null || (other != null && other > worst)) worst = other;
+        // The whole screen takes on the colour of the worst reading among the locations.
+        Integer worst = null;
+        for (Location location : locations) {
+            Integer psi = latest.get(location.region);
+            if (psi != null && (worst == null || psi > worst)) worst = psi;
+        }
         int[] colors = PsiClient.bandGradient(worst);
         root.setBackground(new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, colors));
         getWindow().setStatusBarColor(colors[0]);
         getWindow().setNavigationBarColor(colors[1]);
+        root.post(this::fitToScreen);
     }
 
     private void renderRegions() {
         regionsRow.removeAllViews();
+        int size = dp(level.compact ? 38 : 46);
         for (int i = 0; i < PsiClient.REGIONS.length; i++) {
             String region = PsiClient.REGIONS[i];
             Integer psi = latest.get(region);
@@ -292,19 +212,24 @@ public class MainActivity extends Activity {
             regionsRow.addView(column, new LinearLayout.LayoutParams(0,
                     LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
 
+            StringBuilder icons = new StringBuilder();
+            int count = 0;
+            for (Location location : locations) {
+                if (location.region.equals(region) && count++ < 3) icons.append(location.icon);
+            }
+
             TextView dot = new TextView(this);
             dot.setGravity(Gravity.CENTER);
             dot.setTextColor(0xFFFFFFFF);
-            dot.setTextSize(14);
+            dot.setTextSize(level.compact ? 13 : 14);
             dot.setTypeface(Typeface.DEFAULT_BOLD);
             dot.setText(psi == null ? "–" : String.valueOf(psi));
             GradientDrawable circle = new GradientDrawable();
             circle.setShape(GradientDrawable.OVAL);
             circle.setColor(psi == null ? 0xFF3C6B72 : PsiClient.bandColor(psi));
-            boolean mine = region.equals(home.region) || region.equals(office.region);
-            if (mine) circle.setStroke(dp(3), 0xFFFFFFFF);
+            if (count > 0) circle.setStroke(dp(3), 0xFFFFFFFF);
             dot.setBackground(circle);
-            column.addView(dot, new LinearLayout.LayoutParams(dp(46), dp(46)));
+            column.addView(dot, new LinearLayout.LayoutParams(size, size));
 
             TextView name = new TextView(this);
             name.setText(PsiClient.REGION_LABELS[i]);
@@ -315,13 +240,390 @@ public class MainActivity extends Activity {
             column.addView(name);
 
             TextView tag = new TextView(this);
-            boolean isHome = region.equals(home.region);
-            boolean isOffice = region.equals(office.region);
-            tag.setText(isHome && isOffice ? "🏠🏢" : isHome ? "🏠" : isOffice ? "🏢" : " ");
+            tag.setText(count == 0 ? " " : icons);
             tag.setTextSize(12);
             tag.setGravity(Gravity.CENTER_HORIZONTAL);
             column.addView(tag);
         }
+    }
+
+    // ---- Fitting the cards to the screen ----
+
+    /** Picks the largest card size whose content fits the screen without scrolling. */
+    private void fitToScreen() {
+        if (dragging != null) return;
+        int available = root.getHeight() - root.getPaddingTop() - root.getPaddingBottom();
+        int width = root.getWidth() - root.getPaddingLeft() - root.getPaddingRight();
+        if (available <= 0 || width <= 0) return;
+
+        Level chosen = Level.MINI;
+        for (Level candidate : Level.values()) {
+            applyLevel(candidate);
+            content.measure(View.MeasureSpec.makeMeasureSpec(width, View.MeasureSpec.EXACTLY),
+                    View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED));
+            if (content.getMeasuredHeight() <= available) {
+                chosen = candidate;
+                break;
+            }
+        }
+        if (level != chosen) applyLevel(chosen);
+    }
+
+    private void applyLevel(Level next) {
+        boolean changed = level != next;
+        level = next;
+        for (Card card : cardsById.values()) card.applyLevel();
+        int pad = dp(level.paddingDp);
+        regionsCard.setPadding(pad, pad, pad, pad);
+        if (changed) renderRegions();
+        // Re-layout only when the grid changes; moving cards restarts their gauges.
+        if (columns() != laidOutColumns || dp(level.gapDp) != laidOutGap) layoutCards();
+    }
+
+    private int columns() {
+        boolean wide = getResources().getConfiguration().screenWidthDp >= WIDE_DP;
+        if (wide) return level.compact ? 3 : 2;
+        return level.compact ? 2 : 1;
+    }
+
+    private void fitContentWidth() {
+        int widthDp = getResources().getConfiguration().screenWidthDp;
+        if (widthDp <= MAX_CONTENT_DP) return;
+        int side = dp((widthDp - MAX_CONTENT_DP) / 2 + 20);
+        content.setPadding(side, content.getPaddingTop(), side, content.getPaddingBottom());
+    }
+
+    /**
+     * Places the cards in the saved order, several per row when there is room.
+     * Across Singapore always gets a full row of its own.
+     */
+    private void layoutCards() {
+        for (String key : order) detach(viewFor(key));
+        cards.removeAllViews();
+
+        int columns = columns();
+        laidOutColumns = columns;
+        laidOutGap = dp(level.gapDp);
+        List<View> row = new ArrayList<>();
+        for (String key : order) {
+            if (key.equals(Location.REGIONS_CARD)) {
+                addRow(row, columns);
+                row.clear();
+                addRow(Collections.singletonList(regionsCard), 1);
+                continue;
+            }
+            row.add(viewFor(key));
+            if (row.size() == columns) {
+                addRow(row, columns);
+                row.clear();
+            }
+        }
+        addRow(row, columns);
+    }
+
+    private void addRow(List<View> views, int columns) {
+        if (views.isEmpty()) return;
+        int gap = dp(level.gapDp);
+        LinearLayout.LayoutParams rowParams = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+        rowParams.bottomMargin = gap;
+        if (columns == 1) {
+            cards.addView(views.get(0), rowParams);
+            return;
+        }
+        LinearLayout row = new LinearLayout(this);
+        row.setOrientation(LinearLayout.HORIZONTAL);
+        row.setBaselineAligned(false);
+        for (int i = 0; i < columns; i++) {
+            // Empty slots keep a short last row's cards the same width as the others.
+            View view = i < views.size() ? views.get(i) : new Space(this);
+            LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(0,
+                    LinearLayout.LayoutParams.MATCH_PARENT, 1f);
+            if (i > 0) params.setMarginStart(gap);
+            row.addView(view, params);
+        }
+        cards.addView(row, rowParams);
+    }
+
+    private View viewFor(String key) {
+        return key.equals(Location.REGIONS_CARD) ? regionsCard : cardsById.get(key).view;
+    }
+
+    private static void detach(View view) {
+        ViewGroup parent = (ViewGroup) view.getParent();
+        if (parent != null) parent.removeView(view);
+    }
+
+    // ---- Rearranging ----
+
+    /** Long-press a card to pick it up; the other cards make room as it is dragged over them. */
+    private boolean startDrag(String key, View view) {
+        dragging = key;
+        lastDropTarget = null;
+        view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS);
+        view.startDragAndDrop(ClipData.newPlainText("card", key), new View.DragShadowBuilder(view), null, 0);
+        view.setAlpha(0.35f);
+        return true;
+    }
+
+    private void setUpDropTarget() {
+        cards.setOnDragListener((v, event) -> {
+            switch (event.getAction()) {
+                case DragEvent.ACTION_DRAG_STARTED:
+                    return dragging != null;
+                case DragEvent.ACTION_DRAG_LOCATION:
+                    moveDraggedCard(event.getX(), event.getY());
+                    return true;
+                case DragEvent.ACTION_DRAG_ENDED:
+                    if (dragging != null) {
+                        viewFor(dragging).setAlpha(1f);
+                        dragging = null;
+                        save();
+                        root.post(this::fitToScreen);
+                    }
+                    return true;
+                default:
+                    return true;
+            }
+        });
+    }
+
+    private void moveDraggedCard(float x, float y) {
+        int[] origin = new int[2];
+        cards.getLocationOnScreen(origin);
+        int px = origin[0] + Math.round(x);
+        int py = origin[1] + Math.round(y);
+        int[] loc = new int[2];
+        for (String key : order) {
+            if (key.equals(dragging)) continue;
+            View card = viewFor(key);
+            card.getLocationOnScreen(loc);
+            boolean inside = px >= loc[0] && px < loc[0] + card.getWidth()
+                    && py >= loc[1] && py < loc[1] + card.getHeight();
+            if (!inside) continue;
+            // Cards differ in size, so after a swap the pointer can still be over the same
+            // card; wait until it leaves before swapping again to avoid flicking back and forth.
+            if (key.equals(lastDropTarget)) return;
+            int from = order.indexOf(dragging);
+            int to = order.indexOf(key);
+            order.remove(from);
+            order.add(to, dragging);
+            lastDropTarget = key;
+            layoutCards();
+            return;
+        }
+        lastDropTarget = null;
+    }
+
+    // ---- Managing locations ----
+
+    private void showLocations() {
+        List<String> items = new ArrayList<>();
+        for (Location location : locations) {
+            items.add(location.icon + "  " + location.name + " · " + PsiClient.label(location.region));
+        }
+        boolean canAdd = locations.size() < MAX_LOCATIONS;
+        items.add(canAdd ? "＋  Add a location" : "You can have up to " + MAX_LOCATIONS + " locations");
+        new AlertDialog.Builder(this)
+                .setTitle("Your locations")
+                .setItems(items.toArray(new String[0]), (dialog, which) -> {
+                    if (which < locations.size()) editLocation(locations.get(which));
+                    else if (canAdd) editLocation(null);
+                })
+                .show();
+    }
+
+    /** Add a location ({@code existing} null) or edit one: name, icon and region. */
+    private void editLocation(Location existing) {
+        boolean adding = existing == null;
+        String[] icon = {adding ? "📍" : existing.icon};
+
+        LinearLayout form = new LinearLayout(this);
+        form.setOrientation(LinearLayout.VERTICAL);
+        form.setPadding(dp(24), dp(8), dp(24), 0);
+
+        form.addView(formLabel("Name"));
+        EditText name = new EditText(this);
+        name.setSingleLine();
+        name.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_CAP_WORDS);
+        name.setFilters(new InputFilter[]{new InputFilter.LengthFilter(20)});
+        name.setHint("e.g. Gym, Mum's place");
+        if (!adding) name.setText(existing.name);
+        form.addView(name);
+
+        form.addView(formLabel("Icon"));
+        GridLayout grid = new GridLayout(this);
+        grid.setColumnCount(6);
+        List<TextView> iconViews = new ArrayList<>();
+        for (String emoji : Location.ICONS) {
+            TextView option = new TextView(this);
+            option.setText(emoji);
+            option.setTextSize(24);
+            option.setGravity(Gravity.CENTER);
+            GridLayout.LayoutParams params = new GridLayout.LayoutParams();
+            params.width = dp(46);
+            params.height = dp(46);
+            option.setLayoutParams(params);
+            option.setOnClickListener(v -> {
+                icon[0] = emoji;
+                highlightIcon(iconViews, emoji);
+            });
+            grid.addView(option);
+            iconViews.add(option);
+        }
+        highlightIcon(iconViews, icon[0]);
+        form.addView(grid);
+
+        form.addView(formLabel("Region"));
+        RadioGroup regions = new RadioGroup(this);
+        String current = adding ? PsiClient.DEFAULT_OFFICE : existing.region;
+        for (int i = 0; i < PsiClient.REGIONS.length; i++) {
+            RadioButton option = new RadioButton(this);
+            option.setId(View.generateViewId());
+            option.setText(regionItem(i));
+            option.setTag(PsiClient.REGIONS[i]);
+            option.setPadding(dp(8), dp(6), 0, dp(6));
+            regions.addView(option);
+            if (PsiClient.REGIONS[i].equals(current)) regions.check(option.getId());
+        }
+        form.addView(regions);
+
+        ScrollView scroll = new ScrollView(this);
+        scroll.addView(form);
+
+        AlertDialog.Builder builder = new AlertDialog.Builder(this)
+                .setTitle(adding ? "Add a location" : "Edit " + existing.name)
+                .setView(scroll)
+                .setPositiveButton(adding ? "Add" : "Save", (dialog, which) -> {
+                    RadioButton checked = regions.findViewById(regions.getCheckedRadioButtonId());
+                    String region = checked != null ? (String) checked.getTag() : current;
+                    String label = name.getText().toString().trim();
+                    if (adding) {
+                        if (label.isEmpty()) label = "Place " + (locations.size() + 1);
+                        addLocation(new Location("loc" + System.currentTimeMillis(), label, icon[0], region));
+                    } else {
+                        if (!label.isEmpty()) existing.name = label;
+                        existing.icon = icon[0];
+                        existing.region = region;
+                        locationsChanged(existing);
+                    }
+                })
+                .setNegativeButton("Cancel", null);
+        if (!adding && locations.size() > 1) {
+            builder.setNeutralButton("Delete", (dialog, which) -> confirmDelete(existing));
+        }
+        builder.show();
+    }
+
+    private TextView formLabel(String text) {
+        TextView label = new TextView(this);
+        label.setText(text);
+        label.setTextSize(13);
+        label.setTypeface(Typeface.DEFAULT_BOLD);
+        label.setTextColor(0xFF6B7280);
+        label.setPadding(0, dp(14), 0, dp(4));
+        return label;
+    }
+
+    private void highlightIcon(List<TextView> options, String selected) {
+        for (TextView option : options) {
+            if (option.getText().toString().equals(selected)) {
+                GradientDrawable ring = new GradientDrawable();
+                ring.setShape(GradientDrawable.OVAL);
+                ring.setColor(0xFFD6ECEE);
+                ring.setStroke(dp(2), 0xFF0E3B43);
+                option.setBackground(ring);
+            } else {
+                option.setBackground(null);
+            }
+        }
+    }
+
+    private void confirmDelete(Location location) {
+        new AlertDialog.Builder(this)
+                .setTitle("Delete " + location.name + "?")
+                .setMessage("Its card will be removed. You can add it again later.")
+                .setPositiveButton("Delete", (dialog, which) -> removeLocation(location))
+                .setNegativeButton("Cancel", null)
+                .show();
+    }
+
+    private void addLocation(Location location) {
+        locations.add(location);
+        Card card = new Card(location);
+        cardsById.put(location.id, card);
+        // New cards go after the last location card.
+        int at = 0;
+        for (int i = 0; i < order.size(); i++) {
+            if (!order.get(i).equals(Location.REGIONS_CARD)) at = i + 1;
+        }
+        order.add(at, location.id);
+        save();
+        layoutCards();
+        render(false);
+        card.gauge.setValue(card.value(), true);
+    }
+
+    private void removeLocation(Location location) {
+        locations.remove(location);
+        Card card = cardsById.remove(location.id);
+        if (card != null) detach(card.view);
+        order.remove(location.id);
+        save();
+        layoutCards();
+        render(false);
+    }
+
+    private void locationsChanged(Location changed) {
+        save();
+        render(false);
+        Card card = cardsById.get(changed.id);
+        if (card != null) card.gauge.setValue(card.value(), true);
+    }
+
+    private void save() {
+        Location.saveAll(prefs, locations);
+        Location.saveOrder(prefs, order);
+        PsiWidget.updateAll(getApplicationContext());
+    }
+
+    private Location find(String id) {
+        for (Location location : locations) {
+            if (location.id.equals(id)) return location;
+        }
+        return null;
+    }
+
+    /** Shows the region list with example towns; runs {@code then} after a region is picked. */
+    private void pickRegion(Location location, Runnable then) {
+        CharSequence[] items = new CharSequence[PsiClient.REGIONS.length];
+        int checked = 0;
+        for (int i = 0; i < items.length; i++) {
+            items[i] = regionItem(i);
+            if (PsiClient.REGIONS[i].equals(location.region)) checked = i;
+        }
+        String title = location.id.equals("home") || location.id.equals("office")
+                ? "Where is your " + location.name.toLowerCase(Locale.ROOT) + "?"
+                : "Which region is " + location.name + " in?";
+        new AlertDialog.Builder(this)
+                .setTitle(title)
+                .setSingleChoiceItems(items, checked, (dialog, which) -> {
+                    dialog.dismiss();
+                    location.region = PsiClient.REGIONS[which];
+                    locationsChanged(location);
+                    if (then != null) then.run();
+                })
+                .show();
+    }
+
+    /** "East" with its example towns in smaller grey text underneath. */
+    private static CharSequence regionItem(int i) {
+        SpannableStringBuilder item = new SpannableStringBuilder(PsiClient.REGION_LABELS[i]);
+        int start = item.length();
+        item.append("\n").append(PsiClient.REGION_AREAS[i]);
+        item.setSpan(new RelativeSizeSpan(0.8f), start, item.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+        item.setSpan(new ForegroundColorSpan(0xFF6B7280), start, item.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+        return item;
     }
 
     private static String greeting() {
@@ -335,76 +637,122 @@ public class MainActivity extends Activity {
         return Math.round(value * getResources().getDisplayMetrics().density);
     }
 
+    /** One location's card: icon, name, region chip, ring gauge, band and health tip. */
     private class Card {
-        final String title;
-        final String prefKey;
+        final Location location;
+        final View view;
+        final TextView emoji;
+        final TextView title;
         final TextView regionChip;
         final TextView band;
         final TextView advice;
         final PsiGauge gauge;
-        String region;
+        final LinearLayout body;
+        final LinearLayout info;
+        final View header;
 
-        Card(View view, String emoji, String title, String prefKey, String defaultRegion) {
-            this.title = title;
-            this.prefKey = prefKey;
-            ((TextView) view.findViewById(R.id.emoji)).setText(emoji);
-            ((TextView) view.findViewById(R.id.title)).setText(title);
+        Card(Location location) {
+            this.location = location;
+            view = getLayoutInflater().inflate(R.layout.psi_card, cards, false);
+            emoji = view.findViewById(R.id.emoji);
+            title = view.findViewById(R.id.title);
             regionChip = view.findViewById(R.id.region);
             band = view.findViewById(R.id.band);
             advice = view.findViewById(R.id.advice);
             gauge = view.findViewById(R.id.gauge);
-            region = prefs.getString(prefKey, defaultRegion);
-            regionChip.setOnClickListener(v -> pickRegion(null));
+            body = view.findViewById(R.id.body);
+            info = view.findViewById(R.id.info);
+            header = view.findViewById(R.id.header);
+            title.setMaxLines(1);
+            title.setEllipsize(TextUtils.TruncateAt.END);
+            regionChip.setOnClickListener(v -> pickRegion(location, null));
+            view.setOnClickListener(v -> editLocation(location));
+            view.setOnLongClickListener(v -> startDrag(location.id, v));
+            applyLevel();
         }
 
         Integer value() {
-            return latest.get(region);
+            return latest.get(location.region);
         }
 
-        /** Shows the region list with example towns; runs {@code then} after a region is picked. */
-        void pickRegion(Runnable then) {
-            CharSequence[] items = new CharSequence[PsiClient.REGIONS.length];
-            int checked = 0;
-            for (int i = 0; i < items.length; i++) {
-                SpannableStringBuilder item = new SpannableStringBuilder(PsiClient.REGION_LABELS[i]);
-                int start = item.length();
-                item.append("\n").append(PsiClient.REGION_AREAS[i]);
-                item.setSpan(new RelativeSizeSpan(0.8f), start, item.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
-                item.setSpan(new ForegroundColorSpan(0xFF6B7280), start, item.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
-                items[i] = item;
-                if (PsiClient.REGIONS[i].equals(region)) checked = i;
+        void bind(boolean animate) {
+            gauge.setValue(value(), animate);
+            updateTexts();
+        }
+
+        /** Large sizes put the band and tip beside the gauge; compact ones stack them under it. */
+        void applyLevel() {
+            boolean compact = level.compact && !level.mini;
+            int pad = dp(level.paddingDp);
+            view.setPadding(pad, pad, pad, pad);
+
+            LinearLayout.LayoutParams gaugeParams = (LinearLayout.LayoutParams) gauge.getLayoutParams();
+            gaugeParams.width = dp(level.gaugeDp);
+            gaugeParams.height = dp(level.gaugeDp);
+            gauge.setLayoutParams(gaugeParams);
+
+            body.setOrientation(compact ? LinearLayout.VERTICAL : LinearLayout.HORIZONTAL);
+            body.setGravity(compact ? Gravity.CENTER_HORIZONTAL : Gravity.CENTER_VERTICAL);
+            LinearLayout.LayoutParams infoParams = (LinearLayout.LayoutParams) info.getLayoutParams();
+            infoParams.width = compact ? LinearLayout.LayoutParams.WRAP_CONTENT : 0;
+            infoParams.weight = compact ? 0 : 1;
+            infoParams.setMarginStart(compact ? 0 : dp(18));
+            infoParams.topMargin = compact ? dp(6) : 0;
+            info.setLayoutParams(infoParams);
+            info.setGravity(compact ? Gravity.CENTER_HORIZONTAL : Gravity.START);
+            advice.setGravity(compact ? Gravity.CENTER_HORIZONTAL : Gravity.START);
+            advice.setTextSize(compact ? 13 : 15);
+
+            if (level.mini) {
+                // Gauge on the left; band and name on the right; no header row.
+                body.setOrientation(LinearLayout.HORIZONTAL);
+                body.setGravity(Gravity.CENTER_VERTICAL);
+                infoParams.width = 0;
+                infoParams.weight = 1;
+                infoParams.setMarginStart(dp(10));
+                infoParams.topMargin = 0;
+                info.setLayoutParams(infoParams);
+                LinearLayout.LayoutParams bodyParams = (LinearLayout.LayoutParams) body.getLayoutParams();
+                bodyParams.topMargin = 0;
+                body.setLayoutParams(bodyParams);
+                advice.setTextSize(13);
+                advice.setMaxLines(1);
+                advice.setEllipsize(TextUtils.TruncateAt.END);
+            } else {
+                LinearLayout.LayoutParams bodyParams = (LinearLayout.LayoutParams) body.getLayoutParams();
+                bodyParams.topMargin = dp(12);
+                body.setLayoutParams(bodyParams);
+                advice.setMaxLines(Integer.MAX_VALUE);
+                advice.setEllipsize(null);
             }
-            new AlertDialog.Builder(MainActivity.this)
-                    .setTitle("Where is your " + title.toLowerCase(Locale.ROOT) + "?")
-                    .setSingleChoiceItems(items, checked, (dialog, which) -> {
-                        dialog.dismiss();
-                        region = PsiClient.REGIONS[which];
-                        prefs.edit().putString(prefKey, region).apply();
-                        MainActivity.this.render(false);
-                        gauge.setValue(value(), true);
-                        PsiWidget.updateAll(getApplicationContext());
-                        if (then != null) then.run();
-                    })
-                    .show();
+            header.setVisibility(level.mini ? View.GONE : View.VISIBLE);
+            band.setTextSize(level.mini ? 12 : 14);
+            regionChip.setVisibility(level.compact ? View.GONE : View.VISIBLE);
+            emoji.setTextSize(compact ? 18 : 22);
+            title.setTextSize(compact ? 16 : 19);
+            updateTexts();
         }
 
-        void render(boolean animate) {
-            regionChip.setText(PsiClient.label(region) + "  ▾");
+        void updateTexts() {
+            emoji.setText(location.icon);
+            title.setText(location.name);
+            regionChip.setText(PsiClient.label(location.region) + "  ▾");
             Integer psi = value();
-            gauge.setValue(psi, animate);
 
             GradientDrawable pill = new GradientDrawable();
             pill.setCornerRadius(dp(20));
-            if (psi == null) {
-                band.setText("No reading yet");
-                pill.setColor(0xFF3C6B72);
-                advice.setText("Waiting for the latest NEA update.");
-            } else {
-                band.setText(PsiClient.bandName(psi));
-                pill.setColor(PsiClient.bandColor(psi));
-                advice.setText(PsiClient.bandAdvice(psi));
-            }
+            pill.setColor(psi == null ? 0xFF3C6B72 : PsiClient.bandColor(psi));
             band.setBackground(pill);
+            band.setText(psi == null ? (level.compact ? "No reading" : "No reading yet") : PsiClient.bandName(psi));
+            if (level.mini) {
+                // The header row is hidden, so the name goes under the band.
+                advice.setText(location.icon + " " + location.name);
+            } else if (level.compact) {
+                // No room for the tip; show the region instead, since the chip is hidden.
+                advice.setText(PsiClient.label(location.region));
+            } else {
+                advice.setText(psi == null ? "Waiting for the latest NEA update." : PsiClient.bandAdvice(psi));
+            }
         }
     }
 }

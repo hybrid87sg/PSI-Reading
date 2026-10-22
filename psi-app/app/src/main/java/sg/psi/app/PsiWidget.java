@@ -7,7 +7,10 @@ import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.view.View;
 import android.widget.RemoteViews;
+
+import java.util.List;
 
 /** Home-screen widget showing the 24-hr PSI for the Home and Office regions. */
 public class PsiWidget extends AppWidgetProvider {
@@ -42,12 +45,18 @@ public class PsiWidget extends AppWidgetProvider {
         PsiClient.Result result = PsiClient.load(prefs);
         RemoteViews views = new RemoteViews(context.getPackageName(), R.layout.widget_psi);
 
-        Integer home = bind(views, result, "🏠 Home",
-                prefs.getString(PsiClient.PREF_HOME, PsiClient.DEFAULT_HOME),
+        // The widget shows the first two locations in the app's card order.
+        List<Location> locations = Location.ordered(prefs);
+        Integer home = bind(views, result, locations.get(0),
                 R.id.home_label, R.id.home_value, R.id.home_band);
-        Integer office = bind(views, result, "🏢 Office",
-                prefs.getString(PsiClient.PREF_OFFICE, PsiClient.DEFAULT_OFFICE),
-                R.id.office_label, R.id.office_value, R.id.office_band);
+        Integer office = null;
+        boolean two = locations.size() > 1;
+        views.setViewVisibility(R.id.divider, two ? View.VISIBLE : View.GONE);
+        views.setViewVisibility(R.id.office_column, two ? View.VISIBLE : View.GONE);
+        if (two) {
+            office = bind(views, result, locations.get(1),
+                    R.id.office_label, R.id.office_value, R.id.office_band);
+        }
 
         // Like the app, the widget takes on the colour of the worse reading.
         Integer worst = home;
@@ -66,10 +75,10 @@ public class PsiWidget extends AppWidgetProvider {
         manager.updateAppWidget(ids, views);
     }
 
-    private static Integer bind(RemoteViews views, PsiClient.Result result, String name, String region,
+    private static Integer bind(RemoteViews views, PsiClient.Result result, Location location,
                                 int labelId, int valueId, int bandId) {
-        views.setTextViewText(labelId, name + " · " + PsiClient.label(region));
-        Integer psi = result == null ? null : result.readings.get(region);
+        views.setTextViewText(labelId, location.icon + " " + location.name + " · " + PsiClient.label(location.region));
+        Integer psi = result == null ? null : result.readings.get(location.region);
         views.setTextViewText(valueId, psi == null ? "–" : String.valueOf(psi));
         views.setTextViewText(bandId, psi == null ? "" : PsiClient.bandName(psi));
         return psi;

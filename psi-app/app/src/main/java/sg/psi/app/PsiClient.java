@@ -41,6 +41,7 @@ final class PsiClient {
     static final String DEFAULT_OFFICE = "central";
     static final String PREF_SETUP_DONE = "setup_done";
     static final String PREF_CARD_ORDER = "card_order";
+    static final String PREF_LOCATIONS = "locations";
     private static final String PREF_CACHE = "last_result";
 
     private PsiClient() {
