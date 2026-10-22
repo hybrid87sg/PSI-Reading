@@ -90,6 +90,9 @@ jobs:
             adb shell input keyevent KEYCODE_BACK
             sleep 3
             adb exec-out screencap -p > psi-app-screenshot.png
+            adb shell input draganddrop 540 725 540 1450 1500
+            sleep 3
+            adb exec-out screencap -p > psi-app-reordered.png
             adb shell wm size 2208x1840
             sleep 12
             adb exec-out screencap -p > psi-app-foldable.png
@@ -99,4 +102,5 @@ jobs:
           files: |
             psi-app-setup.png
             psi-app-screenshot.png
+            psi-app-reordered.png
             psi-app-foldable.png
