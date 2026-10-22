@@ -12,6 +12,8 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+    outputs:
+      tag: ${{ steps.release.outputs.tag }}
     defaults:
       run:
         working-directory: psi-app
@@ -32,18 +34,32 @@ jobs:
           path: psi-app/app/build/outputs/apk/release/app-release.apk
       - name: Rename APK for download
         run: cp app/build/outputs/apk/release/app-release.apk psi-app.apk
-      - name: Publish APK to the "PSI app (latest)" release
+      # main publishes the download link in the README; other branches publish a preview to review first.
+      - name: Pick release
+        id: release
+        run: |
+          if [ "$GITHUB_REF" = "refs/heads/main" ]; then
+            echo "tag=psi-app-latest" >> "$GITHUB_OUTPUT"
+            echo "name=PSI app (latest)" >> "$GITHUB_OUTPUT"
+            echo "prerelease=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "tag=psi-app-preview" >> "$GITHUB_OUTPUT"
+            echo "name=PSI app (preview)" >> "$GITHUB_OUTPUT"
+            echo "prerelease=true" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Publish APK
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: psi-app-latest
-          name: PSI app (latest)
+          tag_name: ${{ steps.release.outputs.tag }}
+          name: ${{ steps.release.outputs.name }}
           target_commitish: ${{ github.sha }}
-          body: Latest build of the PSI Home & Office Android app. Download psi-app.apk below and open it on your phone.
+          prerelease: ${{ steps.release.outputs.prerelease }}
+          make_latest: ${{ steps.release.outputs.prerelease == 'false' }}
+          body: Build of the PSI Home & Office Android app. Download psi-app.apk below and open it on your phone.
           files: psi-app/psi-app.apk
-          make_latest: true
 
   screenshot:
-    # Runs the app on an emulator and attaches a screenshot to the same release.
+    # Runs the app on an emulator and attaches phone and foldable screenshots to the same release.
     needs: build
     runs-on: ubuntu-latest
     permissions:
@@ -57,18 +73,34 @@ jobs:
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
-      - name: Take screenshot
+      - name: Take screenshots
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 34
           target: google_apis
           arch: x86_64
           script: |
+            adb shell wm size 1080x2340
+            adb shell wm density 420
             adb install -r app-release.apk
+            sleep 30
             adb shell am start -n sg.psi.app/.MainActivity
             sleep 20
+            adb exec-out screencap -p > psi-app-setup.png
+            adb shell input keyevent KEYCODE_BACK
+            sleep 3
             adb exec-out screencap -p > psi-app-screenshot.png
+            adb shell input draganddrop 540 725 540 1450 1500
+            sleep 3
+            adb exec-out screencap -p > psi-app-reordered.png
+            adb shell wm size 2208x1840
+            sleep 12
+            adb exec-out screencap -p > psi-app-foldable.png
       - uses: softprops/action-gh-release@v2
         with:
-          tag_name: psi-app-latest
-          files: psi-app-screenshot.png
+          tag_name: ${{ needs.build.outputs.tag }}
+          files: |
+            psi-app-setup.png
+            psi-app-screenshot.png
+            psi-app-reordered.png
+            psi-app-foldable.png
