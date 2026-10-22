@@ -7,7 +7,9 @@ struct Location: Codable, Identifiable, Equatable {
     var icon: String
     var region: Region
 
-    static let maxCount = 8
+    static let maxCount = 12
+    /// Mini cards are only used for more locations than this.
+    static let miniAbove = 8
 
     static let icons = [
         "🏠", "🏢", "🏫", "🎓", "🏥", "🏋️",

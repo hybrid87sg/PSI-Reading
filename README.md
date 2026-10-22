@@ -1,6 +1,6 @@
 # PSI Home & Office for iPhone and iPad
 
-An iPhone and iPad app that shows Singapore's **24-hour PSI** for the places you care about: your **home**, your **office**, and up to six more of your own, like the gym or your parents' place. It also has a home-screen widget, so you can check the air without opening anything.
+An iPhone and iPad app that shows Singapore's **24-hour PSI** for the places you care about: your **home**, your **office**, and up to ten more of your own, like the gym or your parents' place. It also has a home-screen widget, so you can check the air without opening anything.
 
 <img src="https://github.com/hybrid87sg/PSI-Reading/releases/download/psi-ios-preview/psi-ios-iphone.png" alt="PSI Home & Office on an iPhone, showing Home and Office gauges" width="300">
 
@@ -15,7 +15,7 @@ During haze season, you usually want to know two things: is the air OK where I l
 This app answers those two questions at a glance:
 
 - **A card for each place**, starting with Home and Office. Each has a ring gauge showing the current 24-hr PSI for that part of Singapore, and a one-line health tip, on a dark turquoise card.
-- **Your own places:** add up to 8 locations, each with its own name and icon.
+- **Your own places:** add up to 12 locations, each with its own name and icon.
 - **Everything fits on one screen:** the cards resize to fit how many places you have.
 - **The whole screen changes colour** with the air: fresh green on a good day, blue when it's moderate, and warming to orange, red and maroon as the haze gets worse. The colour follows whichever of your places is worst.
 - **A home-screen widget** with both readings, in the same colours.
@@ -48,13 +48,16 @@ For what each band means for outdoor activity, see NEA's health advisory on [haz
 2. The app fetches the latest readings, and the gauges fill up to the current values.
 3. That's it. The app remembers your choices.
 
-**Adding a place:** tap the **＋** button at the top, then **Add a location**. Give it a name (for example "Gym" or "Mum's place"), pick an icon, choose its region, and tap **Add**. You can have up to 8 places.
+**Adding a place:** tap the **＋** button at the top, then **Add a location**. Give it a name (for example "Gym" or "Mum's place"), pick an icon, choose its region, and tap **Add**. You can have up to 12 places.
 
 **Editing or deleting a place:** tap its card, or tap **＋** and pick it from the list. You can change the name, icon and region, or tap **Delete location**. You always keep at least one place.
 
 **Changing just the region:** tap the region on a card, for example **East ⌄**.
 
-**How the cards fit:** the app always tries to show all your places on one screen without scrolling. With one or two places you get big cards with a health tip. As you add more, the cards get smaller, then sit two per row (three on iPad), and with many places they switch to a mini layout: a small gauge with the band and name beside it. Only if even that doesn't fit, for example 8 places on a small iPhone, does the screen scroll.
+**How the cards fit:** the app tries to show all your places on one screen. With one or two places you get big cards with a health tip. As you add more, the cards get smaller and sit two per row (three on iPad). Place names can wrap onto a second line, so they aren't cut off.
+
+- **Up to 8 places:** the cards never get smaller than that two-per-row size. If they don't all fit, for example 7 or 8 places on a smaller iPhone, the screen scrolls a little.
+- **9 to 12 places:** the cards switch to mini chips, with a small gauge and the band and name beside it, so they still fit on one screen.
 
 **Refreshing:** tap the round refresh button at the top. The app also refreshes by itself each time you come back to it.
 

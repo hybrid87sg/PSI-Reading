@@ -32,9 +32,11 @@ struct LocationCard: View {
         VStack(alignment: size.compact ? .center : .leading, spacing: size.compact ? 8 : 12) {
             HStack(spacing: 8) {
                 Text(location.icon).font(size.compact ? .title3 : .title2)
+                // Names may wrap to a second line rather than being cut off.
                 Text(location.name)
                     .font(.system(size: size.compact ? 16 : 19, weight: .medium))
-                    .lineLimit(1)
+                    .lineLimit(2)
+                    .fixedSize(horizontal: false, vertical: true)
                 Spacer(minLength: 0)
                 if !size.compact {
                     Button(action: pickRegion) {

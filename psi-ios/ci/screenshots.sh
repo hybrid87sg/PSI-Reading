@@ -46,7 +46,7 @@ seed() {
   xcrun simctl spawn "$1" defaults write sg.psi.app card_order -string ""
   xcrun simctl spawn "$1" defaults write sg.psi.app setup_done -bool YES
 }
-for n in 4 8; do
+for n in 4 8 12; do
   seed "$IPHONE" "$n"
   xcrun simctl launch "$IPHONE" sg.psi.app
   sleep 12

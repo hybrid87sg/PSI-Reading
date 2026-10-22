@@ -67,8 +67,14 @@ struct ContentView: View {
                 page(.large, wide: wide)
                 page(.medium, wide: wide)
                 page(.small, wide: wide)
-                page(.tiny, wide: wide)
-                ScrollView { page(.mini, wide: wide) }
+                // Up to Location.miniAbove locations keep full-height cards (scrolling if
+                // needed); beyond that, mini cards are allowed too.
+                if locations.count > Location.miniAbove {
+                    page(.tiny, wide: wide)
+                    ScrollView { page(.mini, wide: wide) }
+                } else {
+                    ScrollView { page(.tiny, wide: wide) }
+                }
             }
             .frame(maxHeight: .infinity, alignment: .top)
         }
