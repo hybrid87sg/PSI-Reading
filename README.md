@@ -4,6 +4,8 @@ An Android app that shows Singapore's **24-hour PSI** for the two places you car
 
 **Download:** [psi-app.apk](https://github.com/hybrid87sg/Claude-projects/releases/download/psi-app-latest/psi-app.apk) (latest build)
 
+<img src="https://github.com/hybrid87sg/Claude-projects/releases/download/psi-app-latest/psi-app-screenshot.png" alt="The PSI Home & Office app showing Home and Office gauges" width="300">
+
 ---
 
 ## The idea
@@ -12,9 +14,9 @@ During haze season, you usually want to know two things: is the air OK where I l
 
 This app answers those two questions at a glance:
 
-- **Two cards, Home and Office**, each showing the current 24-hr PSI for that part of Singapore.
-- **Colour-coded bands**, so you can tell right away whether it's fine or whether you should limit time outdoors.
-- **A home-screen widget** with both readings, which keeps itself up to date.
+- **Two cards, Home and Office**, each with a ring gauge showing the current 24-hr PSI for that part of Singapore, and a one-line health tip.
+- **The whole screen changes colour** with the air: fresh green on a good day, blue when it's moderate, and warming to orange, red and maroon as the haze gets worse. The colour follows whichever of your two places is worse.
+- **A home-screen widget** with both readings, in the same colours, which keeps itself up to date.
 
 It's deliberately small. There are no accounts, no ads and no tracking. The app only uses its internet permission to fetch the PSI data.
 
@@ -32,33 +34,33 @@ The app shows the **24-hour PSI**. That's the figure NEA uses for its health adv
 |---|---|---|
 | 0–50 | Good | Green |
 | 51–100 | Moderate | Blue |
-| 101–200 | Unhealthy | Amber |
-| 201–300 | Very unhealthy | Orange-red |
-| Above 300 | Hazardous | Dark red |
+| 101–200 | Unhealthy | Orange |
+| 201–300 | Very unhealthy | Red |
+| Above 300 | Hazardous | Maroon |
 
 For what each band means for outdoor activity, see NEA's health advisory on [haze.gov.sg](https://www.haze.gov.sg).
 
 ## Using the app
 
-1. Open the app. It fetches the latest readings straight away.
-2. On the **Home** card, use the dropdown to pick your home's region. Do the same on the **Office** card.
+1. Open the app. It fetches the latest readings straight away, and the gauges fill up to the current values.
+2. On the **Home** card, tap the region chip (for example **East ▾**) and pick your home's region. Do the same on the **Office** card.
 3. That's it. The app remembers your choices.
 
-You'll also see a line showing all five regions, and a **Refresh** button for fetching the readings again.
+Below the cards, **Across Singapore** shows all five regions as coloured circles, with your home and office regions outlined. The round button at the top right fetches the readings again.
 
 ## The home-screen widget
 
 1. Long-press an empty spot on your home screen and tap **Widgets**.
 2. Find **PSI Home & Office** and drag it onto your screen.
 
-The widget shows your Home and Office readings side by side, coloured by band, plus the time of NEA's latest update. It:
+The widget shows your Home and Office readings side by side on a background coloured by the worse of the two, plus the time of NEA's latest update. It:
 
 - refreshes about once an hour (Android decides the exact timing to save battery);
 - also refreshes whenever you open the app or change a region;
 - keeps showing the last reading it got if your phone is offline;
 - opens the app when you tap it.
 
-To change which regions the widget shows, change the dropdowns in the app.
+To change which regions the widget shows, change the region chips in the app.
 
 ## Installing it
 
@@ -77,10 +79,11 @@ The app is intentionally simple: plain Java with Android's built-in libraries on
 | File | What it does |
 |---|---|
 | `psi-app/app/src/main/java/sg/psi/app/PsiClient.java` | Fetches and parses the NEA readings, caches the last good one, and holds the region names and colour bands. |
-| `psi-app/app/src/main/java/sg/psi/app/MainActivity.java` | The main screen: the Home and Office cards, the region pickers and Refresh. |
+| `psi-app/app/src/main/java/sg/psi/app/MainActivity.java` | The main screen: the Home and Office cards, the region pickers, Across Singapore and Refresh. |
+| `psi-app/app/src/main/java/sg/psi/app/PsiGauge.java` | The animated ring gauge drawn on each card. |
 | `psi-app/app/src/main/java/sg/psi/app/PsiWidget.java` | The home-screen widget. |
 | `psi-app/app/src/main/res/` | Layouts, colours and the widget configuration. |
-| `.github/workflows/psi-app.yml` | Builds the APK and publishes it to the release. |
+| `.github/workflows/psi-app.yml` | Builds the APK, publishes it to the release, and takes a screenshot on an Android emulator. |
 
 **Automatic builds:** every change pushed to `psi-app/` triggers GitHub Actions to build the APK and replace the file in the **PSI app (latest)** release, so the download link always gives you the newest version.
 
