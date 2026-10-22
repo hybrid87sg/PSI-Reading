@@ -84,31 +84,39 @@ struct LocationCard: View {
 }
 
 /// A 270° ring that fills up to the PSI value (scale 0–300) in the band colour.
+/// The ring and text scale with the gauge's size.
 struct GaugeView: View {
     let psi: Int?
     @State private var progress: CGFloat = 0
 
     var body: some View {
-        let fraction = CGFloat(min(psi ?? 0, 300)) / 300
-        ZStack {
-            arc(to: 0.75)
-                .stroke(Color.cardRaised, style: StrokeStyle(lineWidth: 12.8, lineCap: .round))
-            if let psi {
-                arc(to: 0.75 * fraction * progress)
-                    .stroke(Band.of(psi).color, style: StrokeStyle(lineWidth: 12.8, lineCap: .round))
+        GeometryReader { geo in
+            let size = min(geo.size.width, geo.size.height)
+            let line = size * 0.1
+            let fraction = CGFloat(min(psi ?? 0, 300)) / 300
+            ZStack {
+                arc(to: 0.75)
+                    .stroke(Color.cardRaised, style: StrokeStyle(lineWidth: line, lineCap: .round))
+                if let psi {
+                    arc(to: 0.75 * fraction * progress)
+                        .stroke(Band.of(psi).color, style: StrokeStyle(lineWidth: line, lineCap: .round))
+                }
+                VStack(spacing: size * 0.03) {
+                    Text(psi.map(String.init) ?? "–")
+                        .font(.system(size: size * 0.3, weight: .bold))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.6)
+                        .contentTransition(.numericText())
+                    Text("PSI")
+                        .font(.system(size: size * 0.09, weight: .medium))
+                        .kerning(size * 0.013)
+                        .foregroundStyle(Color.cardFaint)
+                }
+                .offset(y: size * 0.05)
             }
-            VStack(spacing: 4) {
-                Text(psi.map(String.init) ?? "–")
-                    .font(.system(size: 38, weight: .bold))
-                    .contentTransition(.numericText())
-                Text("PSI")
-                    .font(.system(size: 11.5, weight: .medium))
-                    .kerning(1.7)
-                    .foregroundStyle(Color.cardFaint)
-            }
-            .offset(y: 6)
+            .padding(line / 2)
+            .frame(width: geo.size.width, height: geo.size.height)
         }
-        .padding(6.4)
         .onAppear(perform: animate)
         .onChange(of: psi) { _, _ in animate() }
         .accessibilityElement(children: .ignore)
