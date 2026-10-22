@@ -83,6 +83,7 @@ jobs:
             adb shell wm size 1080x2340
             adb shell wm density 420
             adb install -r app-release.apk
+            sleep 30
             adb shell am start -n sg.psi.app/.MainActivity
             sleep 20
             adb exec-out screencap -p > psi-app-setup.png

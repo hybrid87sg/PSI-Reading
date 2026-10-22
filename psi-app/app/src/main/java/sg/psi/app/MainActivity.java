@@ -250,7 +250,9 @@ public class MainActivity extends Activity {
                 PsiClient.save(prefs, result);
                 main.post(() -> show(result));
             } catch (Exception e) {
-                main.post(() -> updated.setText("Couldn't update · " + e.getMessage()));
+                main.post(() -> updated.setText(latest.isEmpty()
+                        ? "Couldn't reach NEA · tap ↻ to try again"
+                        : "Offline · showing the last reading"));
             }
         });
     }
@@ -308,6 +310,7 @@ public class MainActivity extends Activity {
             name.setText(PsiClient.REGION_LABELS[i]);
             name.setTextColor(0xFFB9D6D9);
             name.setTextSize(12);
+            name.setGravity(Gravity.CENTER_HORIZONTAL);
             name.setPadding(0, dp(6), 0, 0);
             column.addView(name);
 
@@ -316,6 +319,7 @@ public class MainActivity extends Activity {
             boolean isOffice = region.equals(office.region);
             tag.setText(isHome && isOffice ? "🏠🏢" : isHome ? "🏠" : isOffice ? "🏢" : " ");
             tag.setTextSize(12);
+            tag.setGravity(Gravity.CENTER_HORIZONTAL);
             column.addView(tag);
         }
     }
