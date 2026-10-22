@@ -1,10 +1,10 @@
-# PSI Home & Office
+# PSI Home & Office for iPhone and iPad
 
-An Android app that shows Singapore's **24-hour PSI** for the two places you care about most: your **home** and your **office**. It also has a home-screen widget, so you can check the air without opening anything.
+An iPhone and iPad app that shows Singapore's **24-hour PSI** for the two places you care about most: your **home** and your **office**. It also has a home-screen widget, so you can check the air without opening anything.
 
-**Download:** [psi-app.apk](https://github.com/hybrid87sg/Claude-projects/releases/download/psi-app-latest/psi-app.apk) (latest build)
+<img src="https://github.com/hybrid87sg/PSI-Reading/releases/download/psi-ios-preview/psi-ios-iphone.png" alt="PSI Home & Office on an iPhone, showing Home and Office gauges" width="300">
 
-<img src="https://github.com/hybrid87sg/Claude-projects/releases/download/psi-app-latest/psi-app-screenshot.png" alt="The PSI Home & Office app showing Home and Office gauges" width="300">
+> This branch (`ios-app`) holds the iPhone and iPad version. The Android version is on the `main` branch.
 
 ---
 
@@ -16,9 +16,9 @@ This app answers those two questions at a glance:
 
 - **Two cards, Home and Office**, each with a ring gauge showing the current 24-hr PSI for that part of Singapore, and a one-line health tip, on a dark turquoise card.
 - **The whole screen changes colour** with the air: fresh green on a good day, blue when it's moderate, and warming to orange, red and maroon as the haze gets worse. The colour follows whichever of your two places is worse.
-- **A home-screen widget** with both readings, in the same colours, which keeps itself up to date.
+- **A home-screen widget** with both readings, in the same colours.
 
-It's deliberately small. There are no accounts, no ads and no tracking. The app only uses its internet permission to fetch the PSI data.
+It's deliberately small. There are no accounts, no ads and no tracking. The app only goes online to fetch the PSI data.
 
 ## Where the data comes from
 
@@ -40,44 +40,70 @@ The app shows the **24-hour PSI**. That's the figure NEA uses for its health adv
 
 For what each band means for outdoor activity, see NEA's health advisory on [haze.gov.sg](https://www.haze.gov.sg).
 
-## Using the app
+## Using the app on iPhone
 
-1. Open the app. It fetches the latest readings straight away, and the gauges fill up to the current values.
-2. On the **Home** card, tap the region chip (for example **East ▾**) and pick your home's region. Do the same on the **Office** card.
+1. The first time you open the app, a panel slides up asking **Where is your home?** Tap your region. Each region lists a few towns, so you can tell which one you're in. Then do the same for **Where is your office?**
+2. The app fetches the latest readings, and the gauges fill up to the current values.
 3. That's it. The app remembers your choices.
 
-Below the cards, **Across Singapore** shows all five regions as coloured circles, with your home and office regions outlined. The round button at the top right fetches the readings again.
+**Changing your regions:** tap the location button (the arrow icon) at the top, then **Home** or **Office**. You can also tap the region on a card, for example **East ⌄**.
+
+**Refreshing:** tap the round refresh button at the top. The app also refreshes by itself each time you come back to it.
+
+**Rearranging the cards:** touch and hold a card (Home, Office or Across Singapore) until it lifts, then drag it over another card and let go. The app remembers the order.
+
+**Turning your iPhone sideways:** the cards sit two per row, with Home and Office side by side. Turn it back upright for one column.
+
+**Across Singapore** shows all five regions as coloured circles, with your home and office regions outlined.
+
+## Using the app on iPad
+
+Everything works the same as on iPhone, with a layout made for the bigger screen:
+
+- **Two cards per row**, in both portrait and landscape: Home and Office side by side, with Across Singapore below. The cards stop growing on very large screens, so they don't stretch across the whole display.
+- **Split View, Slide Over and Stage Manager:** if you make the app's window narrow, it switches to one column like on iPhone. Widen it again for two per row.
+- **Rearranging with a trackpad or mouse:** click and hold a card, then drag it. With your finger, touch and hold, then drag.
+- **Region choices** open in a panel in the middle of the screen instead of sliding up from the bottom.
 
 ## The home-screen widget
 
-1. Long-press an empty spot on your home screen and tap **Widgets**.
-2. Find **PSI Home & Office** and drag it onto your screen.
+**Adding it on iPhone:**
 
-The widget shows your Home and Office readings side by side on a background coloured by the worse of the two, plus the time of NEA's latest update. It:
+1. Touch and hold an empty spot on your Home Screen until the apps jiggle, then tap **Edit** (top-left) → **Add Widget**.
+2. Search for **PSI**, pick **PSI Home & Office**, and tap **Add Widget**.
+3. Tap **Done**.
 
-- refreshes about once an hour (Android decides the exact timing to save battery);
-- also refreshes whenever you open the app or change a region;
-- keeps showing the last reading it got if your phone is offline;
-- opens the app when you tap it.
+**Adding it on iPad:** the same steps work. You can also put the widget in the **Today View** (swipe right on the first Home Screen page).
 
-To change which regions the widget shows, change the region chips in the app.
+**Choosing the widget's regions:** touch and hold the widget, tap **Edit Widget**, then choose **Home** and **Office**. The widget keeps its own regions, so it can show different places from the app if you like.
+
+The widget shows Home and Office side by side, on a background coloured by the worse of the two, plus the time of NEA's latest update. It refreshes about once an hour (iOS decides the exact timing to save battery), and whenever you open the app. If you're offline, it keeps showing the last reading it got. Tap it to open the app.
+
+The widget comes in the medium size (it takes the space of 4 app icons across and 2 down).
 
 ## Installing it
 
-The app isn't on the Play Store, so you install it directly:
+Apple only lets apps onto an iPhone or iPad if they're signed with an Apple account, so there isn't a direct download link like the Android version has. There are two ways in:
 
-1. On your Android phone, download [psi-app.apk](https://github.com/hybrid87sg/Claude-projects/releases/download/psi-app-latest/psi-app.apk). You can also find it under **Releases → PSI app (latest)** on this repo's page.
-2. Open the downloaded file. Android will ask you to allow your browser to install apps. Allow it, then tap **Install**.
-   - If the app is already installed, Android shows **Update** instead, and your Home and Office choices are kept.
-   - If it isn't installed yet, this does a fresh install.
-3. To update later, download from the same link again and tap **Update**.
+**Option 1: free, with a Mac.** You need a Mac with Xcode (free from the Mac App Store), your Apple ID, and a USB cable for your iPhone or iPad.
 
-**Installed a version from before 22 October 2026?** Those early builds were signed differently, so Android won't update them. Uninstall the old app once (long-press its icon → **Uninstall**), then install the new one. Every update after that works normally.
+1. On the Mac, install [Homebrew](https://brew.sh), then run `brew install xcodegen` in Terminal.
+2. Download this branch (`ios-app`). In Terminal, go to the `psi-ios` folder and run `xcodegen generate`.
+3. Open `PSI.xcodeproj` in Xcode.
+4. For both the **PSI** and **PSIWidget** targets, open **Signing & Capabilities** and pick your Apple ID under **Team**. If Xcode says the bundle ID is taken, change `sg.psi.app` to something unique, such as `sg.yourname.psi`, and the widget's ID to match (`sg.yourname.psi.widget`).
+5. Connect your iPhone or iPad, choose it at the top of the Xcode window and press **Run** (▶).
+6. The first time, Xcode may ask you to turn on **Developer Mode**. On the iPhone or iPad, go to **Settings → Privacy & Security → Developer Mode**, turn it on and restart.
+7. Also the first time, go to **Settings → General → VPN & Device Management**, tap your Apple ID and tap **Trust**.
 
-It needs Android 7.0 or newer.
+With a free Apple ID, the app stops opening after 7 days. Connect the device and press **Run** in Xcode again to renew it. Your regions and card order are kept.
+
+**Option 2: TestFlight, with a paid Apple Developer account** (US$99 a year). New versions arrive on your iPhone and iPad through Apple's free TestFlight app, like an App Store update. You don't need a Mac after the one-time setup, and there's no 7-day limit. Setting this up needs signing certificates from your developer account, added to this repo as GitHub secrets.
+
+It needs **iOS 17 or iPadOS 17** or newer.
 
 ## Ideas for later
 
 - Pick your region automatically from a postal code or your phone's location.
 - Send a notification when PSI at home or the office crosses into Unhealthy.
 - Show a small chart of the last 24 hours.
+- Add small and large widget sizes, and a Lock Screen widget.
