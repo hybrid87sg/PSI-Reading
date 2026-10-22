@@ -2,6 +2,9 @@ plugins {
     id 'com.android.application'
 }
 
+// Each CI run gets a higher version so Android always treats a new APK as an update.
+def buildNumber = (System.getenv('GITHUB_RUN_NUMBER') ?: '1') as int
+
 android {
     namespace 'sg.psi.app'
     compileSdk 34
@@ -10,8 +13,30 @@ android {
         applicationId 'sg.psi.app'
         minSdk 24
         targetSdk 34
-        versionCode 1
-        versionName '1.0'
+        versionCode buildNumber
+        versionName "1.0.${buildNumber}"
+    }
+
+    // One permanent key for every build (kept in this private repo by the owner's choice).
+    // Android only installs an update when it is signed with the same key as the
+    // installed app, so this key must never change.
+    signingConfigs {
+        psi {
+            storeFile file('psi-app.jks')
+            storePassword 'psi-app-key'
+            keyAlias 'psi'
+            keyPassword 'psi-app-key'
+        }
+    }
+
+    buildTypes {
+        debug {
+            signingConfig signingConfigs.psi
+        }
+        release {
+            signingConfig signingConfigs.psi
+            minifyEnabled false
+        }
     }
 
     compileOptions {

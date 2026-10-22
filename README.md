@@ -68,7 +68,11 @@ The app isn't on the Play Store, so you install it directly:
 
 1. On your Android phone, download [psi-app.apk](https://github.com/hybrid87sg/Claude-projects/releases/download/psi-app-latest/psi-app.apk). You can also find it under **Releases → PSI app (latest)** on this repo's page.
 2. Open the downloaded file. Android will ask you to allow your browser to install apps. Allow it, then tap **Install**.
-3. To update later, download from the same link and install over the old version. Your settings are kept.
+   - If the app is already installed, Android shows **Update** instead, and your Home and Office choices are kept.
+   - If it isn't installed yet, this does a fresh install.
+3. To update later, download from the same link again and tap **Update**.
+
+**Installed a version from before 22 October 2026?** Those early builds were signed differently, so Android won't update them. Uninstall the old app once (long-press its icon → **Uninstall**), then install the new one. Every update after that works normally.
 
 It needs Android 7.0 or newer.
 
