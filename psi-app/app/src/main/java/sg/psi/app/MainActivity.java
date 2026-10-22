@@ -132,15 +132,15 @@ public class MainActivity extends Activity {
             dot.setText(psi == null ? "–" : String.valueOf(psi));
             GradientDrawable circle = new GradientDrawable();
             circle.setShape(GradientDrawable.OVAL);
-            circle.setColor(psi == null ? 0xFFC5CAD6 : PsiClient.bandColor(psi));
+            circle.setColor(psi == null ? 0xFF3C6B72 : PsiClient.bandColor(psi));
             boolean mine = region.equals(home.region) || region.equals(office.region);
-            if (mine) circle.setStroke(dp(3), 0xFF1B1F2A);
+            if (mine) circle.setStroke(dp(3), 0xFFFFFFFF);
             dot.setBackground(circle);
             column.addView(dot, new LinearLayout.LayoutParams(dp(46), dp(46)));
 
             TextView name = new TextView(this);
             name.setText(PsiClient.REGION_LABELS[i]);
-            name.setTextColor(0xFF4A5061);
+            name.setTextColor(0xFFB9D6D9);
             name.setTextSize(12);
             name.setPadding(0, dp(6), 0, 0);
             column.addView(name);
@@ -213,7 +213,7 @@ public class MainActivity extends Activity {
             pill.setCornerRadius(dp(20));
             if (psi == null) {
                 band.setText("No reading yet");
-                pill.setColor(0xFFC5CAD6);
+                pill.setColor(0xFF3C6B72);
                 advice.setText("Waiting for the latest NEA update.");
             } else {
                 band.setText(PsiClient.bandName(psi));

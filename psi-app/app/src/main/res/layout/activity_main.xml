@@ -91,7 +91,7 @@
                 android:layout_height="wrap_content"
                 android:fontFamily="sans-serif-medium"
                 android:text="Across Singapore"
-                android:textColor="#1B1F2A"
+                android:textColor="#FFFFFF"
                 android:textSize="17sp" />
 
             <LinearLayout

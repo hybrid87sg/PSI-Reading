@@ -31,13 +31,13 @@ public class PsiGauge extends View {
         super(context, attrs);
         track.setStyle(Paint.Style.STROKE);
         track.setStrokeCap(Paint.Cap.ROUND);
-        track.setColor(0xFFEEF1F5);
+        track.setColor(0xFF1B535C);
         arc.setStyle(Paint.Style.STROKE);
         arc.setStrokeCap(Paint.Cap.ROUND);
-        number.setColor(0xFF1B1F2A);
+        number.setColor(0xFFFFFFFF);
         number.setTextAlign(Paint.Align.CENTER);
         number.setTypeface(Typeface.create("sans-serif", Typeface.BOLD));
-        unit.setColor(0xFF8A90A0);
+        unit.setColor(0xFF8DB5B9);
         unit.setTextAlign(Paint.Align.CENTER);
         unit.setTypeface(Typeface.create("sans-serif-medium", Typeface.NORMAL));
         unit.setLetterSpacing(0.15f);

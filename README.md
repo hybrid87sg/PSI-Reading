@@ -14,7 +14,7 @@ During haze season, you usually want to know two things: is the air OK where I l
 
 This app answers those two questions at a glance:
 
-- **Two cards, Home and Office**, each with a ring gauge showing the current 24-hr PSI for that part of Singapore, and a one-line health tip.
+- **Two cards, Home and Office**, each with a ring gauge showing the current 24-hr PSI for that part of Singapore, and a one-line health tip, on a dark turquoise card.
 - **The whole screen changes colour** with the air: fresh green on a good day, blue when it's moderate, and warming to orange, red and maroon as the haze gets worse. The colour follows whichever of your two places is worse.
 - **A home-screen widget** with both readings, in the same colours, which keeps itself up to date.
 
@@ -71,23 +71,6 @@ The app isn't on the Play Store, so you install it directly:
 3. To update later, download from the same link and install over the old version. Your settings are kept.
 
 It needs Android 7.0 or newer.
-
-## How it's built
-
-The app is intentionally simple: plain Java with Android's built-in libraries only, and no third-party dependencies.
-
-| File | What it does |
-|---|---|
-| `psi-app/app/src/main/java/sg/psi/app/PsiClient.java` | Fetches and parses the NEA readings, caches the last good one, and holds the region names and colour bands. |
-| `psi-app/app/src/main/java/sg/psi/app/MainActivity.java` | The main screen: the Home and Office cards, the region pickers, Across Singapore and Refresh. |
-| `psi-app/app/src/main/java/sg/psi/app/PsiGauge.java` | The animated ring gauge drawn on each card. |
-| `psi-app/app/src/main/java/sg/psi/app/PsiWidget.java` | The home-screen widget. |
-| `psi-app/app/src/main/res/` | Layouts, colours and the widget configuration. |
-| `.github/workflows/psi-app.yml` | Builds the APK, publishes it to the release, and takes a screenshot on an Android emulator. |
-
-**Automatic builds:** every change pushed to `psi-app/` triggers GitHub Actions to build the APK and replace the file in the **PSI app (latest)** release, so the download link always gives you the newest version.
-
-**Building it yourself:** open the `psi-app` folder in Android Studio and click **Run**.
 
 ## Ideas for later
 
