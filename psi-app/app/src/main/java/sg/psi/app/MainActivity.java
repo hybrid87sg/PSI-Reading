@@ -1,11 +1,16 @@
 package sg.psi.app;
 
+import android.Manifest;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.ClipData;
 import android.content.SharedPreferences;
+import android.content.pm.PackageManager;
 import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
+import android.location.LocationListener;
+import android.location.LocationManager;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -21,6 +26,8 @@ import android.view.Gravity;
 import android.view.HapticFeedbackConstants;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.inputmethod.EditorInfo;
+import android.widget.Button;
 import android.widget.EditText;
 import android.widget.GridLayout;
 import android.widget.LinearLayout;
@@ -29,6 +36,7 @@ import android.widget.RadioGroup;
 import android.widget.ScrollView;
 import android.widget.Space;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -49,6 +57,7 @@ public class MainActivity extends Activity {
     /** Content never gets wider than this, so cards don't stretch on very large screens. */
     private static final int MAX_CONTENT_DP = 840;
     private static final int MAX_LOCATIONS = 12;
+    private static final int REQUEST_LOCATION = 1;
     /** Mini cards are only used for more locations than this. */
     private static final int MINI_ABOVE = 8;
 
@@ -100,6 +109,8 @@ public class MainActivity extends Activity {
     private String dragging;
     private String lastDropTarget;
     private Map<String, Integer> latest = new LinkedHashMap<>();
+    /** Runs once location permission is granted. */
+    private Runnable afterPermission;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -421,6 +432,114 @@ public class MainActivity extends Activity {
         lastDropTarget = null;
     }
 
+    // ---- Finding a place's region ----
+
+    /** Receives the phone's position, or a message explaining why it couldn't be found. */
+    private interface PositionCallback {
+        void onPosition(double lat, double lon);
+
+        void onError(String message);
+    }
+
+    /** Gets the phone's approximate position once, asking for permission the first time. */
+    private void currentPosition(PositionCallback callback) {
+        if (checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            afterPermission = () -> currentPosition(callback);
+            requestPermissions(new String[]{Manifest.permission.ACCESS_COARSE_LOCATION}, REQUEST_LOCATION);
+            return;
+        }
+        LocationManager manager = getSystemService(LocationManager.class);
+        // Approximate location only allows the network (or fused) provider, not GPS.
+        String provider = null;
+        if (Build.VERSION.SDK_INT >= 31 && manager.isProviderEnabled(LocationManager.FUSED_PROVIDER)) {
+            provider = LocationManager.FUSED_PROVIDER;
+        } else if (manager.isProviderEnabled(LocationManager.NETWORK_PROVIDER)) {
+            provider = LocationManager.NETWORK_PROVIDER;
+        }
+        if (provider == null) {
+            callback.onError("Turn on Location in your phone's settings, then try again.");
+            return;
+        }
+        try {
+            android.location.Location last = manager.getLastKnownLocation(provider);
+            if (last != null && System.currentTimeMillis() - last.getTime() < 10 * 60 * 1000) {
+                callback.onPosition(last.getLatitude(), last.getLongitude());
+                return;
+            }
+            if (Build.VERSION.SDK_INT >= 30) {
+                manager.getCurrentLocation(provider, null, getMainExecutor(),
+                        location -> deliverPosition(location, callback));
+            } else {
+                manager.requestSingleUpdate(provider, new LocationListener() {
+                    @Override
+                    public void onLocationChanged(android.location.Location location) {
+                        deliverPosition(location, callback);
+                    }
+
+                    // Older Android versions require these to be implemented.
+                    @Override
+                    public void onStatusChanged(String p, int status, Bundle extras) {
+                    }
+
+                    @Override
+                    public void onProviderEnabled(String p) {
+                    }
+
+                    @Override
+                    public void onProviderDisabled(String p) {
+                    }
+                }, Looper.getMainLooper());
+            }
+        } catch (SecurityException e) {
+            callback.onError("Location permission is needed for this.");
+        }
+    }
+
+    private static void deliverPosition(android.location.Location location, PositionCallback callback) {
+        if (location == null) {
+            callback.onError("Couldn't get your location. Check that Location is on and try again.");
+        } else if (!RegionFinder.inSingapore(location.getLatitude(), location.getLongitude())) {
+            callback.onError("You don't seem to be in Singapore right now.");
+        } else {
+            callback.onPosition(location.getLatitude(), location.getLongitude());
+        }
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] results) {
+        if (requestCode != REQUEST_LOCATION) return;
+        Runnable next = afterPermission;
+        afterPermission = null;
+        if (results.length > 0 && results[0] == PackageManager.PERMISSION_GRANTED) {
+            if (next != null) next.run();
+        } else {
+            toast("Without location access, pick the region yourself or search by postal code.");
+        }
+    }
+
+    /** The card's GPS button: sets this location's region from where the phone is now. */
+    private void locateHere(Location location) {
+        toast("Finding your location…");
+        currentPosition(new PositionCallback() {
+            @Override
+            public void onPosition(double lat, double lon) {
+                location.region = RegionFinder.nearestRegion(lat, lon);
+                location.address = "";
+                locationsChanged(location);
+                toast(location.name + " set to " + PsiClient.label(location.region) + " from your location");
+            }
+
+            @Override
+            public void onError(String message) {
+                toast(message);
+            }
+        });
+    }
+
+    private void toast(String message) {
+        Toast.makeText(this, message, Toast.LENGTH_LONG).show();
+    }
+
     // ---- Managing locations ----
 
     private void showLocations() {
@@ -443,6 +562,7 @@ public class MainActivity extends Activity {
     private void editLocation(Location existing) {
         boolean adding = existing == null;
         String[] icon = {adding ? "📍" : existing.icon};
+        String[] address = {adding ? "" : existing.address};
 
         LinearLayout form = new LinearLayout(this);
         form.setOrientation(LinearLayout.VERTICAL);
@@ -480,9 +600,39 @@ public class MainActivity extends Activity {
         highlightIcon(iconViews, icon[0]);
         form.addView(grid);
 
+        // Region: found from a postal code, an address or the phone's location, or picked below.
         form.addView(formLabel("Region"));
+        LinearLayout searchRow = new LinearLayout(this);
+        searchRow.setOrientation(LinearLayout.HORIZONTAL);
+        searchRow.setGravity(Gravity.CENTER_VERTICAL);
+        EditText search = new EditText(this);
+        search.setSingleLine();
+        search.setHint("Postal code or address");
+        search.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_POSTAL_ADDRESS);
+        search.setImeOptions(EditorInfo.IME_ACTION_SEARCH);
+        if (!adding) search.setText(existing.address);
+        searchRow.addView(search, new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
+        Button find = new Button(this);
+        find.setText("Find");
+        searchRow.addView(find);
+        form.addView(searchRow);
+
+        Button here = new Button(this, null, android.R.attr.borderlessButtonStyle);
+        here.setText("📍  Use my current location");
+        here.setAllCaps(false);
+        here.setGravity(Gravity.START | Gravity.CENTER_VERTICAL);
+        form.addView(here);
+
+        TextView found = new TextView(this);
+        found.setTextSize(13);
+        found.setTextColor(0xFF6B7280);
+        found.setPadding(0, 0, 0, dp(6));
+        found.setVisibility(View.GONE);
+        form.addView(found);
+
         RadioGroup regions = new RadioGroup(this);
         String current = adding ? PsiClient.DEFAULT_OFFICE : existing.region;
+        Map<String, Integer> regionIds = new LinkedHashMap<>();
         for (int i = 0; i < PsiClient.REGIONS.length; i++) {
             RadioButton option = new RadioButton(this);
             option.setId(View.generateViewId());
@@ -490,9 +640,52 @@ public class MainActivity extends Activity {
             option.setTag(PsiClient.REGIONS[i]);
             option.setPadding(dp(8), dp(6), 0, dp(6));
             regions.addView(option);
+            regionIds.put(PsiClient.REGIONS[i], option.getId());
             if (PsiClient.REGIONS[i].equals(current)) regions.check(option.getId());
         }
         form.addView(regions);
+
+        Runnable runSearch = () -> {
+            String query = search.getText().toString().trim();
+            if (query.isEmpty()) return;
+            found.setVisibility(View.VISIBLE);
+            found.setText("Searching…");
+            executor.execute(() -> {
+                RegionFinder.Match match = RegionFinder.search(query);
+                main.post(() -> {
+                    if (match == null) {
+                        found.setText("Couldn't find that. Check the postal code or address, or pick a region below.");
+                        return;
+                    }
+                    regions.check(regionIds.get(match.region));
+                    address[0] = match.address;
+                    found.setText("✓ " + match.address + " → " + PsiClient.label(match.region));
+                });
+            });
+        };
+        find.setOnClickListener(v -> runSearch.run());
+        search.setOnEditorActionListener((v, actionId, event) -> {
+            runSearch.run();
+            return true;
+        });
+        here.setOnClickListener(v -> {
+            found.setVisibility(View.VISIBLE);
+            found.setText("Finding your location…");
+            currentPosition(new PositionCallback() {
+                @Override
+                public void onPosition(double lat, double lon) {
+                    String region = RegionFinder.nearestRegion(lat, lon);
+                    regions.check(regionIds.get(region));
+                    address[0] = "";
+                    found.setText("✓ Your current location → " + PsiClient.label(region));
+                }
+
+                @Override
+                public void onError(String message) {
+                    found.setText(message);
+                }
+            });
+        });
 
         ScrollView scroll = new ScrollView(this);
         scroll.addView(form);
@@ -506,11 +699,14 @@ public class MainActivity extends Activity {
                     String label = name.getText().toString().trim();
                     if (adding) {
                         if (label.isEmpty()) label = "Place " + (locations.size() + 1);
-                        addLocation(new Location("loc" + System.currentTimeMillis(), label, icon[0], region));
+                        Location added = new Location("loc" + System.currentTimeMillis(), label, icon[0], region);
+                        added.address = address[0];
+                        addLocation(added);
                     } else {
                         if (!label.isEmpty()) existing.name = label;
                         existing.icon = icon[0];
                         existing.region = region;
+                        existing.address = address[0];
                         locationsChanged(existing);
                     }
                 })
@@ -656,6 +852,7 @@ public class MainActivity extends Activity {
         final LinearLayout body;
         final LinearLayout info;
         final View header;
+        final View gps;
 
         Card(Location location) {
             this.location = location;
@@ -669,6 +866,8 @@ public class MainActivity extends Activity {
             body = view.findViewById(R.id.body);
             info = view.findViewById(R.id.info);
             header = view.findViewById(R.id.header);
+            gps = view.findViewById(R.id.gps);
+            gps.setOnClickListener(v -> locateHere(location));
             title.setEllipsize(TextUtils.TruncateAt.END);
             regionChip.setOnClickListener(v -> pickRegion(location, null));
             view.setOnClickListener(v -> editLocation(location));

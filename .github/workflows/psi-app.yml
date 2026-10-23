@@ -28,6 +28,12 @@ jobs:
           gradle-version: '8.14.3'
       - name: Build signed APK
         run: gradle assembleRelease --no-daemon
+      # Diagnostic: confirms OneMap's address search (used to find a place's region) answers without a login.
+      - name: Check OneMap address search
+        continue-on-error: true
+        run: |
+          curl -sS -m 20 -w '\nHTTP %{http_code}\n' \
+            "https://www.onemap.gov.sg/api/common/elastic/search?searchVal=521123&returnGeom=Y&getAddrDetails=Y&pageNum=1" | head -c 700
       - uses: actions/upload-artifact@v4
         with:
           name: psi-app-apk
