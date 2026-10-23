@@ -52,6 +52,13 @@ For what each band means for outdoor activity, see NEA's health advisory on [haz
 
 **Editing or deleting a place:** tap its card, or tap **＋** and pick it from the list. You can change the name, icon and region, or tap **Delete**. You always keep at least one place.
 
+**Finding the region for you:** you don't need to know which region a place is in.
+
+- **By postal code or address:** in the add or edit screen, type a postal code (for example 521123) or an address (for example "Tampines Ave 5") and tap **Find**. The app shows what it found, for example "123 Tampines Street 11 → East", and selects that region. Check it, then tap **Add** or **Save**.
+- **From where you are now:** tap the location button (the target icon) on any card, or **📍 Use my current location** in the edit screen. The first time, Android asks for permission to use your location. The app only asks for your approximate location, and only uses it to work out the region. Location needs to be turned on in your phone's settings.
+
+Regions are approximate. NEA doesn't publish exact borders, so the app picks the region whose centre is closest. A place near a border could fit either way, and you can always change it. Address search uses your phone's built-in maps lookup. If that finds nothing, a 6-digit postal code still works offline from its postal district.
+
 **Changing just the region:** tap the region chip on a card (for example **East ▾**).
 
 **How the cards fit:** the app tries to show all your places on one screen. With one or two places you get big cards with a health tip. As you add more, the cards get smaller and sit two per row. Place names can wrap onto a second line, so they aren't cut off.
