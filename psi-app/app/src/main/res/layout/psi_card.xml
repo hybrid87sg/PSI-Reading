@@ -43,6 +43,18 @@
             android:paddingEnd="12dp"
             android:textColor="#FFFFFF"
             android:textSize="14sp" />
+
+        <ImageButton
+            android:id="@+id/gps"
+            android:layout_width="36dp"
+            android:layout_height="36dp"
+            android:layout_marginStart="8dp"
+            android:background="@drawable/chip_bg"
+            android:contentDescription="Set region from my current location"
+            android:padding="8dp"
+            android:scaleType="fitCenter"
+            android:src="@android:drawable/ic_menu_mylocation"
+            android:tint="#FFFFFF" />
     </LinearLayout>
 
     <LinearLayout

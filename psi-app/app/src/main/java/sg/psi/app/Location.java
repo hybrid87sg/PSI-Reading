@@ -27,6 +27,8 @@ final class Location {
     String name;
     String icon;
     String region;
+    /** The address or postal code the region was found from, if any. */
+    String address = "";
 
     Location(String id, String name, String icon, String region) {
         this.id = id;
@@ -44,8 +46,10 @@ final class Location {
                 JSONArray array = new JSONArray(json);
                 for (int i = 0; i < array.length(); i++) {
                     JSONObject o = array.getJSONObject(i);
-                    list.add(new Location(o.getString("id"), o.optString("name", "Place"),
-                            o.optString("icon", "📍"), o.optString("region", PsiClient.DEFAULT_OFFICE)));
+                    Location location = new Location(o.getString("id"), o.optString("name", "Place"),
+                            o.optString("icon", "📍"), o.optString("region", PsiClient.DEFAULT_OFFICE));
+                    location.address = o.optString("address", "");
+                    list.add(location);
                 }
             } catch (JSONException ignored) {
                 list.clear();
@@ -65,7 +69,7 @@ final class Location {
         try {
             for (Location l : list) {
                 array.put(new JSONObject().put("id", l.id).put("name", l.name)
-                        .put("icon", l.icon).put("region", l.region));
+                        .put("icon", l.icon).put("region", l.region).put("address", l.address));
             }
         } catch (JSONException ignored) {
             return;
