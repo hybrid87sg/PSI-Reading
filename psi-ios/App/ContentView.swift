@@ -251,9 +251,9 @@ struct ContentView: View {
             if key == Location.regionsCard {
                 RegionsCard(reading: reading, locations: locations, size: size)
             } else if let location = locations.first(where: { $0.id == key }) {
-                LocationCard(location: location, psi: reading?.value(location.region), size: size) {
-                    sheet = .pickRegion(location.id)
-                }
+                LocationCard(location: location, psi: reading?.value(location.region), size: size,
+                             pickRegion: { sheet = .pickRegion(location.id) },
+                             locate: { locateHere(location.id) })
                 .contentShape(Rectangle())
                 .onTapGesture { sheet = .edit(location.id) }
             }
@@ -297,6 +297,24 @@ struct ContentView: View {
     private func remove(_ id: String) {
         locations = locations.filter { $0.id != id }
         order.wrappedValue = order.wrappedValue.filter { $0 != id }
+    }
+
+    /// The card's GPS button: sets a location's region from where the phone is now.
+    private func locateHere(_ id: String) {
+        status = "Finding your location…"
+        Task {
+            do {
+                let region = try await PositionFinder.shared.currentRegion()
+                update(id) {
+                    $0.region = region
+                    $0.address = nil
+                }
+                let name = locations.first(where: { $0.id == id })?.name ?? "Location"
+                status = "\(name) set to \(region.label) from your location"
+            } catch {
+                status = error.localizedDescription
+            }
+        }
     }
 
     private func regionTitle(_ location: Location) -> String {
@@ -358,6 +376,9 @@ struct LocationEditor: View {
     let delete: () -> Void
     let cancel: () -> Void
     @State private var confirmingDelete = false
+    @State private var query = ""
+    @State private var found: String?
+    @State private var searching = false
 
     var body: some View {
         NavigationStack {
@@ -383,7 +404,30 @@ struct LocationEditor: View {
                     }
                     .padding(.vertical, 4)
                 }
-                Section("Region") {
+                Section {
+                    HStack {
+                        TextField("Postal code or address", text: $query)
+                            .textContentType(.fullStreetAddress)
+                            .submitLabel(.search)
+                            .onSubmit(find)
+                        Button("Find", action: find)
+                            .disabled(query.trimmingCharacters(in: .whitespaces).isEmpty || searching)
+                    }
+                    Button {
+                        useCurrentLocation()
+                    } label: {
+                        Label("Use my current location", systemImage: "location.fill")
+                    }
+                    .disabled(searching)
+                    if let found {
+                        Text(found).font(.footnote).foregroundStyle(.secondary)
+                    }
+                } header: {
+                    Text("Region")
+                } footer: {
+                    Text("Find picks the nearest region for you, or choose one below.")
+                }
+                Section {
                     ForEach(Region.allCases) { region in
                         Button {
                             location.region = region
@@ -409,6 +453,7 @@ struct LocationEditor: View {
                     }
                 }
             }
+            .onAppear { if query.isEmpty { query = location.address ?? "" } }
             .navigationTitle(canDelete ? "Edit location" : "Add a location")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -425,6 +470,39 @@ struct LocationEditor: View {
             } message: {
                 Text("Its card will be removed. You can add it again later.")
             }
+        }
+    }
+
+    private func find() {
+        let text = query.trimmingCharacters(in: .whitespaces)
+        guard !text.isEmpty else { return }
+        searching = true
+        found = "Searching…"
+        Task {
+            if let match = await RegionFinder.search(text) {
+                location.region = match.region
+                location.address = match.address
+                found = "✓ \(match.address) → \(match.region.label)"
+            } else {
+                found = "Couldn't find that. Check the postal code or address, or pick a region below."
+            }
+            searching = false
+        }
+    }
+
+    private func useCurrentLocation() {
+        searching = true
+        found = "Finding your location…"
+        Task {
+            do {
+                let region = try await PositionFinder.shared.currentRegion()
+                location.region = region
+                location.address = nil
+                found = "✓ Your current location → \(region.label)"
+            } catch {
+                found = error.localizedDescription
+            }
+            searching = false
         }
     }
 }

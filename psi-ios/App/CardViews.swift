@@ -7,6 +7,8 @@ struct LocationCard: View {
     let psi: Int?
     let size: CardSize
     let pickRegion: () -> Void
+    /// Sets this location's region from where the phone is now.
+    let locate: () -> Void
 
     var body: some View {
         let band = Band.of(psi)
@@ -52,6 +54,14 @@ struct LocationCard: View {
                     }
                     .accessibilityLabel("\(location.name) region: \(location.region.label). Change")
                 }
+                Button(action: locate) {
+                    Image(systemName: "location.fill")
+                        .font(.footnote.weight(.semibold))
+                        .foregroundStyle(.white)
+                        .frame(width: 34, height: 34)
+                        .background(Circle().fill(Color.cardRaised))
+                }
+                .accessibilityLabel("Set \(location.name) region from my current location")
             }
             if size.compact {
                 GaugeView(psi: psi).frame(width: size.gauge, height: size.gauge)

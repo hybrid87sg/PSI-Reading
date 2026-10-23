@@ -21,6 +21,7 @@ targets:
       path: App/Info.plist
       properties:
         CFBundleDisplayName: PSI
+        NSLocationWhenInUseUsageDescription: Your location is only used to work out which PSI region you're in.
         UILaunchScreen:
           UIColorName: ""
         UISupportedInterfaceOrientations:

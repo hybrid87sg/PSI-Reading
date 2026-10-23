@@ -6,6 +6,8 @@ struct Location: Codable, Identifiable, Equatable {
     var name: String
     var icon: String
     var region: Region
+    /// The address or postal code the region was found from, if any.
+    var address: String?
 
     static let maxCount = 12
     /// Mini cards are only used for more locations than this.
