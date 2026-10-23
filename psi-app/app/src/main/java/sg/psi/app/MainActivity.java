@@ -651,7 +651,7 @@ public class MainActivity extends Activity {
             found.setVisibility(View.VISIBLE);
             found.setText("Searching…");
             executor.execute(() -> {
-                RegionFinder.Match match = RegionFinder.search(query);
+                RegionFinder.Match match = RegionFinder.search(getApplicationContext(), query);
                 main.post(() -> {
                     if (match == null) {
                         found.setText("Couldn't find that. Check the postal code or address, or pick a region below.");
