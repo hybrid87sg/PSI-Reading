@@ -75,12 +75,15 @@ Regions are approximate. NEA doesn't publish exact borders, so the app picks the
 ## The home-screen widget
 
 1. Long-press an empty spot on your home screen and tap **Widgets**.
-2. Find **PSI Home & Office** and drag it onto your screen.
+2. Find **PSI Home & Office** and drag one of its two widgets onto your screen:
+   - **PSI Home & Office**: the regular widget, 3 × 2 cells to start.
+   - **PSI (1 row)**: a slim strip, 4 × 1 cells, for a crowded home screen.
 
 The widget shows your places in the same order as your cards, on a background coloured by the worst reading it shows, plus the time of NEA's latest update.
 
 **Resizing it:** long-press the widget, then drag the handles on its edges. It shows as many places as fit:
 
+- **One row tall:** a compact strip, with each place's reading next to its name and band. A 4-cell strip fits about four places.
 - **Smallest (2 cells wide):** just your first place.
 - **Default (3 × 2):** your first two places side by side.
 - **Wider:** up to four places per row.

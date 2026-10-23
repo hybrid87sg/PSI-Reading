@@ -1,11 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- NEA updates PSI hourly; Android may batch updates, so the widget refreshes about once an hour.
-     Resizable from 2x2 cells up: it shows as many places as fit (see PsiWidget). -->
+     Resizable down to 2x1: it shows as many places as fit, as a compact strip at one row
+     tall (see PsiWidget). -->
 <appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
     android:minWidth="180dp"
     android:minHeight="110dp"
     android:minResizeWidth="110dp"
-    android:minResizeHeight="100dp"
+    android:minResizeHeight="40dp"
     android:targetCellWidth="3"
     android:targetCellHeight="2"
     android:updatePeriodMillis="3600000"

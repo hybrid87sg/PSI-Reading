@@ -15,7 +15,8 @@ import java.util.List;
 
 /**
  * Resizable home-screen widget showing the 24-hr PSI for the user's locations, in the
- * app's card order. It shows as many locations as fit its current size.
+ * app's card order. It shows as many locations as fit its current size, as a grid, or as a
+ * compact strip when it is one row tall.
  */
 public class PsiWidget extends AppWidgetProvider {
 
@@ -26,6 +27,10 @@ public class PsiWidget extends AppWidgetProvider {
     private static final int HEADER_HEIGHT_DP = 46;
     private static final int MAX_COLUMNS = 4;
     private static final int MAX_ROWS = 3;
+    /** Below this height the widget is one row tall and shows a compact strip instead. */
+    private static final int SLIM_BELOW_HEIGHT_DP = 100;
+    private static final int SLIM_CELL_WIDTH_DP = 100;
+    private static final int SLIM_MAX_COLUMNS = 6;
 
     @Override
     public void onUpdate(Context context, AppWidgetManager manager, int[] ids) {
@@ -53,17 +58,16 @@ public class PsiWidget extends AppWidgetProvider {
         updateAll(context.getApplicationContext());
     }
 
-    /** Redraws every widget instance from the cached reading and saved locations. */
+    /** Redraws every widget instance (both the regular and the one-row widget). */
     static void updateAll(Context context) {
         AppWidgetManager manager = AppWidgetManager.getInstance(context);
-        int[] ids = manager.getAppWidgetIds(new ComponentName(context, PsiWidget.class));
-        if (ids.length == 0) return;
-
         SharedPreferences prefs = prefs(context);
         PsiClient.Result result = PsiClient.load(prefs);
         List<Location> locations = Location.ordered(prefs);
-        for (int id : ids) {
-            manager.updateAppWidget(id, build(context, manager.getAppWidgetOptions(id), result, locations));
+        for (Class<?> provider : new Class<?>[]{PsiWidget.class, PsiWidgetSlim.class}) {
+            for (int id : manager.getAppWidgetIds(new ComponentName(context, provider))) {
+                manager.updateAppWidget(id, build(context, manager.getAppWidgetOptions(id), result, locations));
+            }
         }
     }
 
@@ -74,6 +78,7 @@ public class PsiWidget extends AppWidgetProvider {
         int heightDp = options.getInt(AppWidgetManager.OPTION_APPWIDGET_MAX_HEIGHT, 110);
         if (widthDp <= 0) widthDp = 250;
         if (heightDp <= 0) heightDp = 110;
+        if (heightDp < SLIM_BELOW_HEIGHT_DP) return buildSlim(context, widthDp, result, locations);
 
         int columns = clamp(widthDp / CELL_WIDTH_DP, 1, MAX_COLUMNS);
         int rows = clamp((heightDp - HEADER_HEIGHT_DP) / CELL_HEIGHT_DP, 1, MAX_ROWS);
@@ -107,11 +112,37 @@ public class PsiWidget extends AppWidgetProvider {
             views.addView(R.id.widget_grid, row);
         }
 
-        // Like the app, the widget takes on the colour of the worst reading it shows.
-        views.setInt(R.id.widget_root, "setBackgroundResource", PsiClient.widgetBackground(worst));
         String time = PsiClient.shortTime(result == null ? null : result.timestamp);
         views.setTextViewText(R.id.widget_updated, time.isEmpty() ? "24-hr PSI" : "24-hr PSI · " + time);
+        return finish(context, views, worst);
+    }
 
+    /** One row tall: a compact strip with each place's reading beside its name and band. */
+    private static RemoteViews buildSlim(Context context, int widthDp, PsiClient.Result result,
+                                         List<Location> locations) {
+        int columns = clamp(widthDp / SLIM_CELL_WIDTH_DP, 1, SLIM_MAX_COLUMNS);
+        int count = Math.min(columns, locations.size());
+
+        RemoteViews views = new RemoteViews(context.getPackageName(), R.layout.widget_psi_slim);
+        views.removeAllViews(R.id.widget_grid);
+        Integer worst = null;
+        for (int i = 0; i < count; i++) {
+            Location location = locations.get(i);
+            Integer psi = result == null ? null : result.readings.get(location.region);
+            if (psi != null && (worst == null || psi > worst)) worst = psi;
+            RemoteViews cell = new RemoteViews(context.getPackageName(), R.layout.widget_cell_slim);
+            cell.setTextViewText(R.id.cell_value, psi == null ? "–" : String.valueOf(psi));
+            cell.setTextViewText(R.id.cell_label, location.icon + " " + location.name);
+            cell.setTextViewText(R.id.cell_band, psi == null ? PsiClient.label(location.region) : PsiClient.bandName(psi));
+            views.addView(R.id.widget_grid, cell);
+        }
+        return finish(context, views, worst);
+    }
+
+    /** Background colour and tap-to-open, shared by both layouts. */
+    private static RemoteViews finish(Context context, RemoteViews views, Integer worst) {
+        // Like the app, the widget takes on the colour of the worst reading it shows.
+        views.setInt(R.id.widget_root, "setBackgroundResource", PsiClient.widgetBackground(worst));
         Intent open = new Intent(context, MainActivity.class);
         PendingIntent tap = PendingIntent.getActivity(context, 0, open,
                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);

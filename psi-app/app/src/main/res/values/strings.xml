@@ -1,4 +1,5 @@
 <resources>
     <string name="app_name">PSI Home &amp; Office</string>
-    <string name="widget_description">24-hr PSI for your home and office</string>
+    <string name="widget_description">24-hr PSI for your places</string>
+    <string name="widget_slim_description">24-hr PSI for your places in one compact row</string>
 </resources>
