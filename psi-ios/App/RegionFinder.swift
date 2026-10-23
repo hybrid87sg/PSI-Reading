@@ -20,7 +20,7 @@ enum RegionFinder {
         (.central, 1.327, 103.845),  // Toa Payoh, Bishan, Orchard, Novena
     ]
 
-    // Rough centre of each postal district (1–28), used when OneMap can't be reached.
+    // Rough centre of each postal district (1–28), used when the geocoder finds nothing or is offline.
     private static let districtCentres: [(Double, Double)] = [
         (1.283, 103.851), (1.276, 103.845), (1.291, 103.807), (1.265, 103.822), (1.304, 103.765),
         (1.291, 103.850), (1.302, 103.858), (1.310, 103.854), (1.304, 103.832), (1.318, 103.806),
@@ -50,36 +50,26 @@ enum RegionFinder {
         }!.0
     }
 
-    /// Looks up a postal code or address on OneMap, Singapore's official map service. If OneMap
-    /// can't be reached, a 6-digit postal code still works using its postal district.
+    /// Looks up a postal code or address with Apple's built-in geocoder (no account needed).
+    /// If that finds nothing or the phone is offline, a 6-digit postal code still works using
+    /// its postal district.
     static func search(_ query: String) async -> Match? {
         let q = query.trimmingCharacters(in: .whitespaces)
-        if let match = try? await searchOneMap(q) { return match }
+        if let match = try? await geocode(q) { return match }
         guard q.count == 6, q.allSatisfy(\.isNumber), let sector = Int(q.prefix(2)),
               let district = districtSectors.first(where: { $0.value.contains(sector) })?.key else { return nil }
         let centre = districtCentres[district - 1]
         return Match(region: nearestRegion(centre.0, centre.1), address: "Singapore \(q)")
     }
 
-    private static func searchOneMap(_ query: String) async throws -> Match? {
-        var components = URLComponents(string: "https://www.onemap.gov.sg/api/common/elastic/search")!
-        components.queryItems = [
-            URLQueryItem(name: "searchVal", value: query),
-            URLQueryItem(name: "returnGeom", value: "Y"),
-            URLQueryItem(name: "getAddrDetails", value: "Y"),
-            URLQueryItem(name: "pageNum", value: "1"),
-        ]
-        var request = URLRequest(url: components.url!)
-        request.timeoutInterval = 10
-        let (data, response) = try await URLSession.shared.data(for: request)
-        guard (response as? HTTPURLResponse)?.statusCode == 200,
-              let root = try JSONSerialization.jsonObject(with: data) as? [String: Any],
-              let top = (root["results"] as? [[String: Any]])?.first,
-              let lat = Double(top["LATITUDE"] as? String ?? ""),
-              let lon = Double(top["LONGITUDE"] as? String ?? ""),
-              inSingapore(lat, lon) else { return nil }
-        let address = (top["ADDRESS"] as? String ?? query).capitalized
-        return Match(region: nearestRegion(lat, lon), address: address)
+    private static func geocode(_ query: String) async throws -> Match? {
+        let text = query.localizedCaseInsensitiveContains("singapore") ? query : query + ", Singapore"
+        let placemarks = try await CLGeocoder().geocodeAddressString(text)
+        guard let top = placemarks.first, let coordinate = top.location?.coordinate,
+              inSingapore(coordinate.latitude, coordinate.longitude) else { return nil }
+        let address = [top.name, top.postalCode].compactMap { $0 }.joined(separator: ", ")
+        return Match(region: nearestRegion(coordinate.latitude, coordinate.longitude),
+                     address: address.isEmpty ? query : address)
     }
 }
 
